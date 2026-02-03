@@ -4,9 +4,10 @@ import { Lock } from "lucide-react";
 
 interface VideoPlayerProps {
     isUnlocked?: boolean;
+    isPlaying?: boolean;
 }
 
-export default function VideoPlayer({ isUnlocked = false }: VideoPlayerProps) {
+export default function VideoPlayer({ isUnlocked = false, isPlaying = false }: VideoPlayerProps) {
     // Using a sample video that works (Big Buck Bunny)
     const videoSrc = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
@@ -15,10 +16,15 @@ export default function VideoPlayer({ isUnlocked = false }: VideoPlayerProps) {
             <video
                 className="w-full h-full object-cover"
                 src={videoSrc}
-                controls={isUnlocked}
+                // controls={isUnlocked} // Hide default controls for matrix feel
                 autoPlay={false}
-                muted={!isUnlocked}
+                muted={false}
                 loop
+                ref={(el) => {
+                    if (el) {
+                        isPlaying ? el.play() : el.pause();
+                    }
+                }}
             />
 
             {!isUnlocked && (

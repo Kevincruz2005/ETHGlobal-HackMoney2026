@@ -69,12 +69,18 @@ export function useStreamSession() {
         return () => clearInterval(interval);
     }, [isPlaying, balance]);
 
+    const topUp = (amount: number) => {
+        setBalance(prev => prev + amount);
+        addLog('init', amount.toFixed(4), '0xTOPUP_' + uuidv4().slice(0, 8));
+    };
+
     return {
         balance,
         logs,
         isPlaying,
         totalPaid,
         startSession,
-        stopSession
+        stopSession,
+        topUp
     };
 }
