@@ -6,6 +6,7 @@ import { X } from 'lucide-react';
 interface SmartTopUpProps {
     isOpen: boolean;
     onClose: () => void;
+    onSimulateCredit?: (amount: number) => void;
 }
 
 const widgetConfig: WidgetConfig = {
@@ -28,7 +29,7 @@ const widgetConfig: WidgetConfig = {
     appearance: 'dark',
 };
 
-export default function SmartTopUp({ isOpen, onClose }: SmartTopUpProps) {
+export default function SmartTopUp({ isOpen, onClose, onSimulateCredit }: SmartTopUpProps) {
     if (!isOpen) return null;
 
     return (
@@ -49,6 +50,20 @@ export default function SmartTopUp({ isOpen, onClose }: SmartTopUpProps) {
                         className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors"
                     >
                         <X size={20} />
+                    </button>
+                </div>
+
+                {/* Demo safety / simulation credit */}
+                <div className="px-4 py-3 border-b border-zinc-900 bg-zinc-950/60">
+                    <button
+                        onClick={() => {
+                            onSimulateCredit?.(5.0);
+                            onClose();
+                        }}
+                        className="w-full px-3 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-200 text-xs font-bold border border-zinc-800 transition-colors"
+                        title="Demo Safety Net: instantly credit the session balance (no on-chain spend)"
+                    >
+                        Simulate bridge credit (+5.00 USDC)
                     </button>
                 </div>
 

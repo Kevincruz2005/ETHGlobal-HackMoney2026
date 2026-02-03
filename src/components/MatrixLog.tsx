@@ -2,14 +2,33 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useRef } from "react";
+import { useEnsAvatar } from "wagmi";
+import { mainnet } from "wagmi/chains";
+import { normalize } from "viem/ens";
+import Image from "next/image";
 import type { StreamLog } from "@/hooks/useStreamSession";
 
 interface MatrixLogProps {
     logs: StreamLog[];
+    buyerLabel?: string;
+    sellerLabel?: string;
+    buyerEnsName?: string;
+    sellerEnsName?: string;
 }
 
-export default function MatrixLog({ logs }: MatrixLogProps) {
+export default function MatrixLog({ logs, buyerLabel, sellerLabel, buyerEnsName, sellerEnsName }: MatrixLogProps) {
     const bottomRef = useRef<HTMLDivElement>(null);
+
+    // Fetch ENS avatars for buyer and seller
+    const { data: buyerAvatar } = useEnsAvatar({
+        name: buyerEnsName ? normalize(buyerEnsName) : undefined,
+        chainId: mainnet.id,
+    });
+
+    const { data: sellerAvatar } = useEnsAvatar({
+        name: sellerEnsName ? normalize(sellerEnsName) : undefined,
+        chainId: mainnet.id,
+    });
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -31,7 +50,7 @@ export default function MatrixLog({ logs }: MatrixLogProps) {
                             transition={{ duration: 0.2 }}
                             className="flex items-center gap-2 text-green-500/80 hover:text-green-400"
                         >
-                            <span className="text-zinc-600">[{new Date(log.timestamp).toLocaleTimeString([], { hour12: false, fractionalSecondDigits: 3 })}]</span>
+                            <span className="text-zinc-600 text-[10px]">[{new Date(log.timestamp).toLocaleTimeString([], { hour12: false, fractionalSecondDigits: 3 })}]</span>
 
                             {log.type === 'init' && (
                                 <span className="text-yellow-400 font-bold">» SESSION_INIT :: {log.amount} USDC</span>
@@ -39,11 +58,64 @@ export default function MatrixLog({ logs }: MatrixLogProps) {
 
                             {log.type === 'STATE_UPDATE' && (
                                 <>
-                                    <span className="text-green-500 font-bold">» SIG_VERIFIED</span>
-                                    <span className="text-zinc-500 hidden sm:inline text-[10px] tracking-tighter max-w-[100px] truncate">
+                                    {/* Buyer Avatar */}
+                                    {(buyerLabel || sellerLabel) && (
+                                        <div className="flex items-center gap-1">
+                                            {buyerAvatar && (
+                                                <div className="w-4 h-4 rounded-full overflow-hidden bg-zinc-800 border border-cyan-400/30">
+                                                    <Image
+                                                        src={buyerAvatar}
+                                                        alt={buyerLabel || "buyer"}
+                                                        width={16}
+                                                        height={16}
+                                                        className="object-cover"
+                                                    />
+                                                </div>
+                                            )}
+                                            <span className="text-cyan-400/90 font-bold text-[10px]">
+                                                {buyerLabel || "buyer"}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    <span className="text-green-500 font-bold text-[10px]">» SIG_VERIFIED</span>
+                                    
+                                    {/* Transaction Hash */}
+                                    <span className="text-zinc-500 hidden lg:inline text-[9px] tracking-tighter max-w-[80px] truncate">
                                         {log.signature}
                                     </span>
-                                    <span className="text-white font-bold ml-auto">-{log.amount} USDC</span>
+
+                                    {/* Arrow */}
+                                    <span className="text-zinc-600 text-[8px]">→</span>
+
+                                    {/* Seller Avatar */}
+                                    {(buyerLabel || sellerLabel) && (
+                                        <div className="flex items-center gap-1">
+                                            {sellerAvatar && (
+                                                <div className="w-4 h-4 rounded-full overflow-hidden bg-zinc-800 border border-yellow-400/30">
+                                                    <Image
+                                                        src={sellerAvatar}
+                                                        alt={sellerLabel || "seller"}
+                                                        width={16}
+                                                        height={16}
+                                                        className="object-cover"
+                                                    />
+                                                </div>
+                                            )}
+                                            <span className="text-yellow-400/90 font-bold text-[10px]">
+                                                {sellerLabel || "seller"}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* Amount */}
+                                    <span className="text-white font-bold ml-auto text-[10px]">
+                                        {log.amount.includes('0.000000') ? (
+                                            <span className="text-purple-400">FREE VIEW</span>
+                                        ) : (
+                                            `-${log.amount} USDC`
+                                        )}
+                                    </span>
                                 </>
                             )}
                         </motion.div>

@@ -9,6 +9,10 @@ interface AgentViewProps {
     totalPaid: number;
     logs: StreamLog[];
     creatorAddress: string;
+    buyerLabel?: string;
+    sellerLabel?: string;
+    ratePerSecond: number;
+    tickMs: number;
 }
 
 export default function AgentView({
@@ -16,7 +20,11 @@ export default function AgentView({
     isPlaying,
     totalPaid,
     logs,
-    creatorAddress
+    creatorAddress,
+    buyerLabel,
+    sellerLabel,
+    ratePerSecond,
+    tickMs,
 }: AgentViewProps) {
     const agentData = {
         protocol: "NITROLITE_V1",
@@ -25,12 +33,17 @@ export default function AgentView({
             status: isPlaying ? "ACTIVE" : "INACTIVE",
             balance_usdc: balance.toFixed(6),
             total_paid_usdc: totalPaid.toFixed(6),
-            rate_per_second: "0.0001",
+            rate_per_second: ratePerSecond.toFixed(6),
+            tick_ms: tickMs,
         },
         creator: {
             address: creatorAddress,
             chain: "base-sepolia",
             content_type: "video/mp4",
+        },
+        parties: {
+            buyer: buyerLabel ?? null,
+            seller: sellerLabel ?? null,
         },
         channel: {
             state: isPlaying ? "OPEN" : "CLOSED",

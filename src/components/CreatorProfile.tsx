@@ -1,32 +1,19 @@
 "use client";
 
-import { useEnsName, useEnsAvatar, useEnsText } from "wagmi";
-import { mainnet } from "wagmi/chains";
-import { normalize } from "viem/ens";
 import Image from "next/image";
+import type { NitroCreatorMetadata } from "@/hooks/useNitroCreatorMetadata";
 
 interface CreatorProfileProps {
     address: `0x${string}`;
+    metadata?: NitroCreatorMetadata;
 }
 
-export default function CreatorProfile({ address }: CreatorProfileProps) {
-    // ENS resolution happens on mainnet
-    const { data: ensName } = useEnsName({
-        address,
-        chainId: mainnet.id
-    });
-
-    const { data: ensAvatar } = useEnsAvatar({
-        name: ensName ?? undefined,
-        chainId: mainnet.id
-    });
-
-    const { data: description } = useEnsText({
-        name: ensName ? normalize(ensName) : undefined,
-        key: "description",
-        chainId: mainnet.id,
-    });
-
+export default function CreatorProfile({ address, metadata }: CreatorProfileProps) {
+    const ensName = metadata?.ensName;
+    const ensAvatar = metadata?.ensAvatar;
+    const description = metadata?.description;
+    const discountCode = metadata?.discountCode;
+    const saleRate = metadata?.saleRate;
     return (
         <div className="flex items-center gap-3 p-3 bg-zinc-900/50 rounded-xl border border-zinc-800 backdrop-blur-sm">
             {/* Avatar */}
@@ -65,6 +52,20 @@ export default function CreatorProfile({ address }: CreatorProfileProps) {
                 <p className="text-xs text-zinc-400 truncate">
                     {description || "Creator on NitroGate"}
                 </p>
+                {(typeof saleRate === "number" || discountCode) && (
+                    <div className="mt-1 flex items-center gap-2 text-[10px]">
+                        {typeof saleRate === "number" && (
+                            <span className="px-1.5 py-0.5 rounded-full bg-cyan-400/15 text-cyan-300 border border-cyan-400/20 font-bold">
+                                SALE RATE: {saleRate.toFixed(6)}/s
+                            </span>
+                        )}
+                        {discountCode && (
+                            <span className="px-1.5 py-0.5 rounded-full bg-yellow-400/15 text-yellow-300 border border-yellow-400/20 font-bold">
+                                COUPON: {discountCode}
+                            </span>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );
