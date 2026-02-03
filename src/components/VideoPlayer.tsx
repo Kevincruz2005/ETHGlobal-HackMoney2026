@@ -22,7 +22,11 @@ export default function VideoPlayer({ isUnlocked = false, isPlaying = false }: V
                 loop
                 ref={(el) => {
                     if (el) {
-                        isPlaying ? el.play() : el.pause();
+                        if (isPlaying) {
+                            void el.play();
+                        } else {
+                            el.pause();
+                        }
                     }
                 }}
             />

@@ -21,8 +21,11 @@ export default function Home() {
   // Auto-trigger Smart Top-Up when balance is low
   useEffect(() => {
     if (isPlaying && balance < 0.0010 && balance > 0) {
-      stopSession();
-      setIsTopUpOpen(true);
+      // Defer state updates to avoid synchronous setState-in-effect lint errors
+      setTimeout(() => {
+        stopSession();
+        setIsTopUpOpen(true);
+      }, 0);
     }
   }, [balance, isPlaying, stopSession]);
 

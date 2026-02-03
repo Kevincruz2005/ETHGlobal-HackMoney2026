@@ -1,6 +1,7 @@
 "use client";
 
 import { getDefaultConfig, RainbowKitProvider, darkTheme } from "@rainbow-me/rainbowkit";
+import { useEffect } from "react";
 import { WagmiProvider } from "wagmi";
 import { baseSepolia, sepolia, mainnet } from "wagmi/chains";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
@@ -16,6 +17,12 @@ const config = getDefaultConfig({
 const queryClient = new QueryClient();
 
 export function Web3Provider({ children }: { children: React.ReactNode }) {
+    useEffect(() => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/25817603-2654-4e83-8f50-c59a008a9f80',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'run1',hypothesisId:'A',location:'src/providers/Web3Provider.tsx:Web3Provider.useEffect',message:'Web3Provider mounted; capture origin + projectId presence',data:{origin: typeof window !== 'undefined' ? window.location.origin : 'ssr', hasProjectId: Boolean(process.env.NEXT_PUBLIC_WC_PROJECT_ID), projectIdValue: process.env.NEXT_PUBLIC_WC_PROJECT_ID ? 'set' : 'missing_or_placeholder', chains: config.chains.map(c=>({id:c.id,name:c.name}))},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion agent log
+    }, []);
+
     return (
         <WagmiProvider config={config}>
             <QueryClientProvider client={queryClient}>

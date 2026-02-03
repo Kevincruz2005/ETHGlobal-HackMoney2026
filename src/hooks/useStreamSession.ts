@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { useSound } from './useSound';
 
 export interface StreamLog {
     id: string;
@@ -16,21 +17,13 @@ export function useStreamSession() {
     const [logs, setLogs] = useState<StreamLog[]>([]);
     const [isPlaying, setIsPlaying] = useState(false);
     const [totalPaid, setTotalPaid] = useState(0.0000);
+    const { playSound } = useSound();
+    const paymentCountRef = useRef(0); // Track payment count for sound throttling
 
     // Buffer logs to avoid too many re-renders if we sped it up, 
     // but for 1s interval direct state update is fine.
 
-    const startSession = () => {
-        setBalance(5.0000); // Demo Money
-        setIsPlaying(true);
-        addLog('init', '5.0000', '0xINIT_SESSION_' + uuidv4().slice(0, 8));
-    };
-
-    const stopSession = () => {
-        setIsPlaying(false);
-    };
-
-    const addLog = (type: StreamLog['type'], amount: string, signature: string) => {
+    const addLog = useCallback((type: StreamLog['type'], amount: string, signature: string) => {
         const newLog: StreamLog = {
             id: uuidv4(),
             timestamp: Date.now(),
@@ -39,7 +32,20 @@ export function useStreamSession() {
             signature
         };
         setLogs(prev => [newLog, ...prev].slice(0, 50)); // Keep last 50 logs
-    };
+    }, []);
+
+    const startSession = useCallback(() => {
+        setBalance(5.0000); // Demo Money
+        setIsPlaying(true);
+        paymentCountRef.current = 0; // Reset payment counter
+        addLog('init', '5.0000', '0xINIT_SESSION_' + uuidv4().slice(0, 8));
+        playSound('start');
+    }, [addLog, playSound]);
+
+    const stopSession = useCallback(() => {
+        setIsPlaying(false);
+        playSound('stop');
+    }, [playSound]);
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
@@ -60,19 +66,25 @@ export function useStreamSession() {
                 // Simulate a "Signature" from the Yellow Network State Channel
                 const mockSig = "0x" + Math.random().toString(16).slice(2, 10) + "...";
                 addLog('STATE_UPDATE', '0.0001', mockSig);
+                
+                // Play payment confirmation sound every 5 seconds (5th payment)
+                // to provide feedback without being annoying
+                paymentCountRef.current += 1;
+                if (paymentCountRef.current % 5 === 0) {
+                    playSound('payment');
+                }
 
             }, 1000); // 1 second intervals for "Matrix" feel
-        } else if (balance <= 0 && isPlaying) {
-            setIsPlaying(false);
         }
 
         return () => clearInterval(interval);
-    }, [isPlaying, balance]);
+    }, [addLog, balance, isPlaying, playSound]);
 
-    const topUp = (amount: number) => {
+    const topUp = useCallback((amount: number) => {
         setBalance(prev => prev + amount);
         addLog('init', amount.toFixed(4), '0xTOPUP_' + uuidv4().slice(0, 8));
-    };
+        playSound('topup');
+    }, [addLog, playSound]);
 
     return {
         balance,
