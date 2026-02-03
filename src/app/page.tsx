@@ -3,14 +3,20 @@
 import VideoPlayer from "@/components/VideoPlayer";
 import MatrixLog from "@/components/MatrixLog";
 import SmartTopUp from "@/components/SmartTopUp";
+import CreatorProfile from "@/components/CreatorProfile";
+import AgentView from "@/components/AgentView";
 import { useStreamSession } from "@/hooks/useStreamSession";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
-import { Coins } from "lucide-react";
+import { Coins, Monitor, Bot } from "lucide-react";
+
+// Vitalik's address for demo ENS resolution
+const DEMO_CREATOR_ADDRESS = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" as const;
 
 export default function Home() {
-  const { balance, logs, isPlaying, startSession, stopSession, topUp } = useStreamSession();
+  const { balance, logs, isPlaying, startSession, stopSession, topUp, totalPaid } = useStreamSession();
   const [isTopUpOpen, setIsTopUpOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"Human" | "Agent">("Human");
 
   // Auto-trigger Smart Top-Up when balance is low
   useEffect(() => {
@@ -27,20 +33,63 @@ export default function Home() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-140px)]">
         {/* Main Content: Video + Controls */}
         <div className="lg:col-span-3 flex flex-col gap-4">
-          <div className="relative w-full shadow-[0_0_40px_-10px_rgba(250,204,21,0.15)] rounded-xl">
-            <VideoPlayer isUnlocked={balance > 0} isPlaying={isPlaying} />
+          {viewMode === "Human" ? (
+            <>
+              <div className="relative w-full shadow-[0_0_40px_-10px_rgba(250,204,21,0.15)] rounded-xl">
+                <VideoPlayer isUnlocked={balance > 0} isPlaying={isPlaying} />
 
-            {/* Overlay Badge for "Yellow Network" */}
-            {isPlaying && (
-              <div className="absolute top-4 left-4 flex items-center gap-2 bg-zinc-950/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-yellow-500/30">
-                <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
-                <span className="text-[10px] font-bold text-yellow-400 tracking-wider">NITROLITE::CHANNEL_OPEN</span>
+                {/* Overlay Badge for "Yellow Network" */}
+                {isPlaying && (
+                  <div className="absolute top-4 left-4 flex items-center gap-2 bg-zinc-950/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-yellow-500/30">
+                    <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+                    <span className="text-[10px] font-bold text-yellow-400 tracking-wider">NITROLITE::CHANNEL_OPEN</span>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+
+              {/* Creator Profile */}
+              <CreatorProfile address={DEMO_CREATOR_ADDRESS} />
+            </>
+          ) : (
+            <AgentView
+              balance={balance}
+              isPlaying={isPlaying}
+              totalPaid={totalPaid}
+              logs={logs}
+              creatorAddress={DEMO_CREATOR_ADDRESS}
+            />
+          )}
 
           {/* Stream Controls */}
           <div className="flex items-center justify-between p-4 bg-zinc-900/50 rounded-xl border border-zinc-800 backdrop-blur-sm shadow-sm ring-1 ring-white/5 transition-all hover:border-zinc-700">
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-2 mr-4">
+              <button
+                onClick={() => setViewMode("Human")}
+                className={cn(
+                  "p-2 rounded-lg transition-all",
+                  viewMode === "Human"
+                    ? "bg-yellow-400 text-black"
+                    : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                )}
+                title="Human View"
+              >
+                <Monitor size={16} />
+              </button>
+              <button
+                onClick={() => setViewMode("Agent")}
+                className={cn(
+                  "p-2 rounded-lg transition-all",
+                  viewMode === "Agent"
+                    ? "bg-cyan-400 text-black"
+                    : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                )}
+                title="Agent View (JSON API)"
+              >
+                <Bot size={16} />
+              </button>
+            </div>
+
             <div className="flex items-center gap-6">
               <div className="flex flex-col">
                 <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-1">Stream Status</p>

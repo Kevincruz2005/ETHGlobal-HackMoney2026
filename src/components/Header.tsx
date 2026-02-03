@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 export default function Header() {
   return (
@@ -8,10 +11,8 @@ export default function Header() {
           NitroGate<span className="text-yellow-400">.</span>
         </span>
       </Link>
-      
-      <button className="px-4 py-2 text-sm font-medium text-black bg-white rounded-lg hover:bg-zinc-200 transition-colors">
-        Connect Wallet
-      </button>
+
+      <ConnectButton />
     </header>
   );
 }

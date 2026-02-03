@@ -9,6 +9,7 @@ interface SmartTopUpProps {
 }
 
 const widgetConfig: WidgetConfig = {
+    integrator: 'nitrogate-hackathon',
     // Hardcoded to Bridge TO: Base Sepolia (Chain ID: 84532), USDC
     toChain: 84532,
     toToken: '0x036CbD53842c5426634e7929541eC2318f3dCF7e', // USDC on Base Sepolia
@@ -25,7 +26,6 @@ const widgetConfig: WidgetConfig = {
         },
     },
     appearance: 'dark',
-    disableAppearance: true,
 };
 
 export default function SmartTopUp({ isOpen, onClose }: SmartTopUpProps) {
