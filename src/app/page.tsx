@@ -5,6 +5,8 @@ import MatrixLog from "@/components/MatrixLog";
 import SmartTopUp from "@/components/SmartTopUp";
 import CreatorProfile from "@/components/CreatorProfile";
 import AgentView from "@/components/AgentView";
+import AnimatedBackground from "@/components/AnimatedBackground";
+import AnimatedButton from "@/components/AnimatedButton";
 import { useStreamSession } from "@/hooks/useStreamSession";
 import { useNitroCreatorMetadata } from "@/hooks/useNitroCreatorMetadata";
 import { cn } from "@/lib/utils";
@@ -24,7 +26,6 @@ export default function Home() {
     startSession,
     stopSession,
     topUp,
-    resetBalance,
     totalPaid,
     ratePerSecond,
     tickMs,
@@ -96,214 +97,213 @@ export default function Home() {
   }, [tickMs]);
 
   return (
-    <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-6">
-      <SmartTopUp
-        isOpen={isTopUpOpen}
-        onClose={() => {
-          setIsTopUpOpen(false);
-          // If user closes without crediting, keep autopilot armed but return to idle
-          setTimeout(() => setRefillStatus("idle"), 0);
-        }}
-        onSimulateCredit={(amount) => {
-          topUp(amount);
-          setRefillStatus("credited");
-          setTimeout(() => setRefillStatus("idle"), 800);
-        }}
-      />
+    <AnimatedBackground className="min-h-screen">
+      <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-6">
+        <SmartTopUp
+          isOpen={isTopUpOpen}
+          onClose={() => {
+            setIsTopUpOpen(false);
+            // If user closes without crediting, keep autopilot armed but return to idle
+            setTimeout(() => setRefillStatus("idle"), 0);
+          }}
+          onSimulateCredit={(amount) => {
+            topUp(amount);
+            setRefillStatus("credited");
+            setTimeout(() => setRefillStatus("idle"), 800);
+          }}
+        />
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-140px)]">
-        {/* Main Content: Video + Controls */}
-        <div className="lg:col-span-3 flex flex-col gap-4">
-          {viewMode === "Human" ? (
-            <>
-              <div className="relative w-full shadow-[0_0_40px_-10px_rgba(250,204,21,0.15)] rounded-xl">
-                <VideoPlayer isUnlocked={balance > 0} isPlaying={isPlaying} />
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-140px)]">
+          {/* Main Content: Video + Controls */}
+          <div className="lg:col-span-3 flex flex-col gap-4">
+            {viewMode === "Human" ? (
+              <>
+                <div className="relative w-full backdrop-blur-glass rounded-xl border border-[#4DA2FF]/20 animate-pulse-glow">
+                  <VideoPlayer isUnlocked={balance > 0} isPlaying={isPlaying} />
 
-                {/* Overlay Badge for "Yellow Network" */}
-                {isPlaying && (
-                  <div className="absolute top-4 left-4 flex items-center gap-2 bg-zinc-950/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-yellow-500/30">
-                    <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
-                    <span className="text-[10px] font-bold text-yellow-400 tracking-wider">NITROLITE::CHANNEL_OPEN</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Creator Profile */}
-              <CreatorProfile address={DEMO_CREATOR_ADDRESS} metadata={creatorMetadata} />
-            </>
-          ) : (
-            <AgentView
-              balance={balance}
-              isPlaying={isPlaying}
-              totalPaid={totalPaid}
-              logs={logs}
-              creatorAddress={DEMO_CREATOR_ADDRESS}
-              buyerLabel={buyerLabel}
-              sellerLabel={sellerLabel}
-              ratePerSecond={ratePerSecond}
-              tickMs={tickMs}
-            />
-          )}
-
-          {/* Stream Controls */}
-          <div className="flex items-center justify-between p-4 bg-zinc-900/50 rounded-xl border border-zinc-800 backdrop-blur-sm shadow-sm ring-1 ring-white/5 transition-all hover:border-zinc-700">
-            {/* View Mode Toggle */}
-            <div className="flex items-center gap-2 mr-4">
-              <button
-                onClick={() => setViewMode("Human")}
-                className={cn(
-                  "p-2 rounded-lg transition-all",
-                  viewMode === "Human"
-                    ? "bg-yellow-400 text-black"
-                    : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
-                )}
-                title="Human View"
-              >
-                <Monitor size={16} />
-              </button>
-              <button
-                onClick={() => setViewMode("Agent")}
-                className={cn(
-                  "p-2 rounded-lg transition-all",
-                  viewMode === "Agent"
-                    ? "bg-cyan-400 text-black"
-                    : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
-                )}
-                title="Agent View (JSON API)"
-              >
-                <Bot size={16} />
-              </button>
-            </div>
-
-            <div className="flex items-center gap-6">
-              <div className="flex flex-col">
-                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-1">Stream Status</p>
-                <div className="flex items-center gap-2">
-                  <div className={cn("w-2 h-2 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.5)] transition-colors",
-                    isPlaying ? "bg-red-500 animate-pulse" : "bg-zinc-600"
-                  )} />
-                  <span className="font-bold text-white text-sm tracking-wide">
-                    {isPlaying ? "LIVE FEED" : "OFFLINE"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="h-8 w-px bg-zinc-800" />
-
-              <div className="flex flex-col">
-                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-1">Autopilot</p>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      const next = !autopilotEnabled;
-                      setAutopilotEnabled(next);
-                      setRefillStatus("idle");
-                    }}
-                    className={cn(
-                      "px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide border transition-colors",
-                      autopilotEnabled
-                        ? "bg-emerald-400/20 text-emerald-300 border-emerald-400/30"
-                        : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700"
-                    )}
-                    title="Intent-based Balance Guard (testnet/sim-safe)"
-                  >
-                    {autopilotEnabled ? "ON" : "OFF"}
-                  </button>
-                  {hasSeasonPass && (
-                    <span className="px-2 py-1 text-[9px] bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 border border-purple-400/30 rounded-full font-bold">
-                      SEASON PASS
-                    </span>
+                  {/* Overlay Badge for "Yellow Network" */}
+                  {isPlaying && (
+                    <div className="absolute top-4 left-4 flex items-center gap-2 backdrop-blur-glass px-3 py-1.5 rounded-full border border-[#4DA2FF]/30">
+                      <div className="w-2 h-2 rounded-full bg-[#4DA2FF] animate-pulse" />
+                      <span className="text-[10px] font-bold text-[#4DA2FF] tracking-wider">NITROLITE::CHANNEL_OPEN</span>
+                    </div>
                   )}
+                </div>
+
+                {/* Creator Profile */}
+                <CreatorProfile address={DEMO_CREATOR_ADDRESS} metadata={creatorMetadata} />
+              </>
+            ) : (
+              <AgentView
+                balance={balance}
+                isPlaying={isPlaying}
+                totalPaid={totalPaid}
+                logs={logs}
+                creatorAddress={DEMO_CREATOR_ADDRESS}
+                buyerLabel={buyerLabel}
+                sellerLabel={sellerLabel}
+                ratePerSecond={ratePerSecond}
+                tickMs={tickMs}
+              />
+            )}
+
+            {/* Stream Controls */}
+            <div className="flex items-center justify-between p-4 backdrop-blur-glass rounded-xl border border-[#4DA2FF]/20 transition-all hover:border-[#4DA2FF]/30">
+              {/* View Mode Toggle */}
+              <div className="flex items-center gap-2 mr-4">
+                <button
+                  onClick={() => setViewMode("Human")}
+                  className={cn(
+                    "p-2 rounded-lg transition-all",
+                    viewMode === "Human"
+                      ? "bg-[#4DA2FF] text-black shadow-lg shadow-[#4DA2FF]/30"
+                      : "bg-black text-zinc-400 hover:bg-zinc-900 border border-zinc-800"
+                  )}
+                  title="Human View"
+                >
+                  <Monitor size={16} />
+                </button>
+                <button
+                  onClick={() => setViewMode("Agent")}
+                  className={cn(
+                    "p-2 rounded-lg transition-all",
+                    viewMode === "Agent"
+                      ? "bg-[#4DA2FF] text-black shadow-lg shadow-[#4DA2FF]/30"
+                      : "bg-black text-zinc-400 hover:bg-zinc-900 border border-zinc-800"
+                  )}
+                  title="Agent View (JSON API)"
+                >
+                  <Bot size={16} />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-6">
+                <div className="flex flex-col">
+                  <p className="text-[10px] text-[#A8C7E8] font-mono uppercase tracking-widest mb-1">Stream Status</p>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-zinc-500">Min</span>
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      value={minBalance}
-                      onChange={(e) => setMinBalance(Number(e.target.value || 0))}
-                      disabled={hasSeasonPass}
-                      className={cn(
-                        "w-16 px-2 py-1 rounded-md bg-zinc-950/60 border text-zinc-200 text-[10px] font-mono focus:outline-none focus:ring-1 focus:ring-yellow-400/40",
-                        hasSeasonPass ? "border-zinc-800 opacity-50 cursor-not-allowed" : "border-zinc-800"
-                      )}
-                    />
-                    <span className="text-[10px] text-zinc-600">USDC</span>
+                    <div className={cn("w-2 h-2 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.5)] transition-colors",
+                      isPlaying ? "bg-red-500 animate-pulse" : "bg-zinc-600"
+                    )} />
+                    <span className="font-bold text-white text-sm tracking-wide">
+                      {isPlaying ? "LIVE FEED" : "OFFLINE"}
+                    </span>
                   </div>
                 </div>
-                {autopilotEnabled && (
-                  <p className="text-[10px] text-zinc-600 mt-1">
-                    {hasSeasonPass 
-                      ? "Season pass active: unlimited viewing"
-                      : refillStatus === "prompting" 
-                        ? "Refill intent: prompting" 
-                        : refillStatus === "credited" 
-                          ? "Refill: credited" 
-                          : "Guard active"
-                    }
-                  </p>
-                )}
-              </div>
 
-              <div className="h-8 w-px bg-zinc-800" />
+                <div className="h-8 w-px bg-zinc-800" />
 
-              <div className="flex flex-col">
-                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-1">Engine Speed</p>
-                <button
-                  onClick={() => setTickMs(tickMs === 1000 ? 250 : tickMs === 250 ? 100 : 1000)}
-                  className="px-3 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[10px] font-bold border border-zinc-700 transition-colors"
-                  title="High-speed state updates (simulation)"
-                >
-                  {simulationSpeedLabel}
-                </button>
-              </div>
-
-              <div className="flex flex-col">
-                <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mb-1">State Channel Balance</p>
-                <div className="flex items-center gap-2">
-                  <span className={cn("font-mono text-xl font-bold tracking-tight transition-colors",
-                    hasSeasonPass ? "text-gradient bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent" :
-                    balance < 0.5 ? "text-red-400" : "text-white"
-                  )}>
-                    {hasSeasonPass ? "∞" : `$${balance.toFixed(4)}`} 
-                    <span className="text-sm text-zinc-600 font-normal ml-1">
-                      {hasSeasonPass ? "FREE" : "USDC"}
-                    </span>
-                  </span>
-                  {hasSeasonPass && (
-                    <div className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 animate-pulse" />
+                <div className="flex flex-col">
+                  <p className="text-[10px] text-[#A8C7E8] font-mono uppercase tracking-widest mb-1">Autopilot</p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        const next = !autopilotEnabled;
+                        setAutopilotEnabled(next);
+                        setRefillStatus("idle");
+                      }}
+                      className={cn(
+                        "px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide border transition-colors",
+                        autopilotEnabled
+                          ? "bg-[#4DA2FF]/20 text-[#4DA2FF] border-[#4DA2FF]/30"
+                          : "bg-black text-zinc-400 border-zinc-800 hover:bg-zinc-900"
+                      )}
+                      title="Intent-based Balance Guard (testnet/sim-safe)"
+                    >
+                      {autopilotEnabled ? "ON" : "OFF"}
+                    </button>
+                    {hasSeasonPass && (
+                      <span className="px-2 py-1 text-[9px] bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 border border-purple-400/30 rounded-full font-bold">
+                        SEASON PASS
+                      </span>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <label htmlFor="min-balance" className="text-[10px] text-[#A8C7E8]">Min</label>
+                      <input
+                        id="min-balance"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        value={minBalance}
+                        onChange={(e) => setMinBalance(Number(e.target.value || 0))}
+                        disabled={hasSeasonPass}
+                        title="Minimum balance threshold for autopilot top-up"
+                        placeholder="2.0"
+                        className={cn(
+                          "w-16 px-2 py-1 rounded-md bg-black border text-zinc-200 text-[10px] font-mono focus:outline-none focus:ring-1 focus:ring-[#4DA2FF]/40",
+                          hasSeasonPass ? "border-zinc-800 opacity-50 cursor-not-allowed" : "border-zinc-800"
+                        )}
+                      />
+                      <span className="text-[10px] text-zinc-600">USDC</span>
+                    </div>
+                  </div>
+                  {autopilotEnabled && (
+                    <p className="text-[10px] text-zinc-600 mt-1">
+                      {hasSeasonPass 
+                        ? "Season pass active: unlimited viewing"
+                        : refillStatus === "prompting" 
+                          ? "Refill intent: prompting" 
+                          : refillStatus === "credited" 
+                            ? "Refill: credited" 
+                            : "Guard active"
+                      }
+                    </p>
                   )}
                 </div>
-              </div>
-            </div>
 
-            <div className="flex items-center gap-2">
-              {!isPlaying ? (
-                <button
-                  onClick={startSession}
-                  className="px-6 py-2.5 bg-yellow-400 hover:bg-yellow-300 text-black font-bold rounded-lg transition-all uppercase tracking-tight text-sm shadow-[0_0_15px_rgba(250,204,21,0.3)] hover:shadow-[0_0_20px_rgba(250,204,21,0.5)] active:scale-95"
-                >
-                  Start Stream
-                </button>
-              ) : (
-                <button
-                  onClick={stopSession}
-                  className="px-6 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white font-bold rounded-lg transition-all uppercase tracking-tight text-sm border border-zinc-700 active:scale-95"
-                >
-                  Stop Stream
-                </button>
-              )}
+                <div className="h-8 w-px bg-zinc-800" />
+
+                <div className="flex flex-col">
+                  <p className="text-[10px] text-[#A8C7E8] font-mono uppercase tracking-widest mb-1">Engine Speed</p>
+                  <button
+                    onClick={() => setTickMs(tickMs === 1000 ? 250 : tickMs === 250 ? 100 : 1000)}
+                    className="px-3 py-1 rounded-md bg-black hover:bg-zinc-900 text-zinc-200 text-[10px] font-bold border border-zinc-800 transition-colors"
+                    title="High-speed state updates (simulation)"
+                  >
+                    {simulationSpeedLabel}
+                  </button>
+                </div>
+
+                <div className="flex flex-col">
+                  <p className="text-[10px] text-[#A8C7E8] font-mono uppercase tracking-widest mb-1">State Channel Balance</p>
+                  <div className="flex items-center gap-2">
+                    <span className={cn("font-mono text-xl font-bold tracking-tight transition-colors",
+                      hasSeasonPass ? "text-gradient bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent" :
+                      balance < 0.5 ? "text-red-400" : "text-white"
+                    )}>
+                      {hasSeasonPass ? "∞" : `$${balance.toFixed(4)}`} 
+                      <span className="text-sm text-zinc-600 font-normal ml-1">
+                        {hasSeasonPass ? "FREE" : "USDC"}
+                      </span>
+                    </span>
+                    {hasSeasonPass && (
+                      <div className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 animate-pulse" />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {!isPlaying ? (
+                  <AnimatedButton onClick={startSession} size="md">
+                    Start Stream
+                  </AnimatedButton>
+                ) : (
+                  <AnimatedButton onClick={stopSession} variant="secondary" size="md">
+                    Stop Stream
+                  </AnimatedButton>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Sidebar: Logs / Chat */}
-        <div className="lg:col-span-1 bg-black rounded-xl border border-zinc-800 backdrop-blur-sm flex flex-col overflow-hidden h-full ring-1 ring-white/5 shadow-2xl">
-          <div className="p-3 border-b border-zinc-900 bg-zinc-950 flex justify-between items-center">
-            <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Yellow Network Logs</span>
+        <div className="lg:col-span-1 backdrop-blur-glass rounded-xl border border-[#4DA2FF]/20 flex flex-col overflow-hidden h-full border-glow">
+          <div className="p-3 border-b border-[#4DA2FF]/10 bg-black flex justify-between items-center">
+            <span className="text-[10px] font-mono text-[#4DA2FF] uppercase tracking-widest text-glow">Yellow Network Logs</span>
             <div className="flex gap-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-zinc-800" />
-              <div className="w-1.5 h-1.5 rounded-full bg-zinc-800" />
+              <div className="w-1.5 h-1.5 rounded-full bg-[#4DA2FF] animate-pulse" />
+              <div className="w-1.5 h-1.5 rounded-full bg-[#4DA2FF]" />
             </div>
           </div>
 
@@ -318,40 +318,43 @@ export default function Home() {
           </div>
 
           {/* Enhanced Demo Controls */}
-          <div className="p-3 border-t border-zinc-900 bg-zinc-950">
+          <div className="p-3 border-t border-[#4DA2FF]/10 bg-black">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[9px] text-zinc-600 font-mono uppercase tracking-wider">Simulation Controls</span>
+              <span className="text-[9px] text-[#A8C7E8] font-mono uppercase tracking-wider">Simulation Controls</span>
               <div className="flex gap-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                 <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
               </div>
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={() => topUp(5.0000)}
-                className="flex-1 px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[9px] font-mono rounded transition-colors border border-zinc-700 hover:border-yellow-400/30"
-                title="Simulate bridge credit: Add +5 USDC (Demo Mode)"
+              <AnimatedButton 
+                onClick={() => topUp(5.0000)} 
+                size="sm" 
+                variant="secondary"
               >
                 +5 USDC
-              </button>
-              <button
-                onClick={() => topUp(1.0000)}
-                className="flex-1 px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[9px] font-mono rounded transition-colors border border-zinc-700 hover:border-cyan-400/30"
-                title="Simulate small top-up: Add +1 USDC"
+              </AnimatedButton>
+              <AnimatedButton 
+                onClick={() => topUp(1.0000)} 
+                size="sm" 
+                variant="secondary"
               >
                 +1 USDC
-              </button>
-              <button
-                onClick={resetBalance}
-                className="flex-1 px-2 py-1 bg-zinc-800 hover:bg-red-900/20 text-red-400 text-[9px] font-mono rounded transition-colors border border-zinc-700 hover:border-red-400/30"
-                title="Reset balance to 0 (Test low balance)"
+              </AnimatedButton>
+              <AnimatedButton 
+                onClick={() => {
+                  topUp(-balance);
+                  stopSession();
+                }} 
+                size="sm" 
+                variant="danger"
               >
                 RESET
-              </button>
+              </AnimatedButton>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </AnimatedBackground>
   );
 }

@@ -53,7 +53,7 @@ export default function MatrixLog({ logs, buyerLabel, sellerLabel, buyerEnsName,
                             <span className="text-zinc-600 text-[10px]">[{new Date(log.timestamp).toLocaleTimeString([], { hour12: false, fractionalSecondDigits: 3 })}]</span>
 
                             {log.type === 'init' && (
-                                <span className="text-yellow-400 font-bold">» SESSION_INIT :: {log.amount} USDC</span>
+                                <span className="text-[#4DA2FF] font-bold">» SESSION_INIT :: {log.amount} USDC</span>
                             )}
 
                             {log.type === 'STATE_UPDATE' && (
@@ -92,7 +92,7 @@ export default function MatrixLog({ logs, buyerLabel, sellerLabel, buyerEnsName,
                                     {(buyerLabel || sellerLabel) && (
                                         <div className="flex items-center gap-1">
                                             {sellerAvatar && (
-                                                <div className="w-4 h-4 rounded-full overflow-hidden bg-zinc-800 border border-yellow-400/30">
+                                                <div className="w-4 h-4 rounded-full overflow-hidden bg-zinc-800 border border-[#4DA2FF]/30">
                                                     <Image
                                                         src={sellerAvatar}
                                                         alt={sellerLabel || "seller"}
@@ -102,7 +102,7 @@ export default function MatrixLog({ logs, buyerLabel, sellerLabel, buyerEnsName,
                                                     />
                                                 </div>
                                             )}
-                                            <span className="text-yellow-400/90 font-bold text-[10px]">
+                                            <span className="text-[#4DA2FF]/90 font-bold text-[10px]">
                                                 {sellerLabel || "seller"}
                                             </span>
                                         </div>

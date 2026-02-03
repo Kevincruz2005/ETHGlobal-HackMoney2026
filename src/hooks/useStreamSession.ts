@@ -15,7 +15,7 @@ export interface StreamLog {
 }
 
 export function useStreamSession() {
-    const [balance, setBalance] = useState(0.0000);
+    const [balance, setBalance] = useState(1.0000); // Start with demo money
     const [logs, setLogs] = useState<StreamLog[]>([]);
     const [isPlaying, setIsPlaying] = useState(false);
     const [totalPaid, setTotalPaid] = useState(0.0000);
@@ -44,12 +44,14 @@ export function useStreamSession() {
     }, []);
 
     const startSession = useCallback(() => {
-        setBalance(5.0000); // Demo Money
+        if (balance <= 0) {
+            setBalance(5.0000); // Add demo money if balance is 0
+        }
         setIsPlaying(true);
         paymentCountRef.current = 0; // Reset payment counter
-        addLog('init', '5.0000', '0xINIT_SESSION_' + uuidv4().slice(0, 8));
+        addLog('init', balance > 0 ? balance.toFixed(4) : '5.0000', '0xINIT_SESSION_' + uuidv4().slice(0, 8));
         playSound('start');
-    }, [addLog, playSound]);
+    }, [addLog, playSound, balance]);
 
     const stopSession = useCallback(() => {
         setIsPlaying(false);
