@@ -25,8 +25,10 @@ export function useStreamSession() {
     const [autopilotEnabled, setAutopilotEnabled] = useState(false);
     const [refillStatus, setRefillStatus] = useState<'idle' | 'prompting' | 'bridging' | 'credited' | 'failed'>('idle');
     const [hasSeasonPass, setHasSeasonPass] = useState(false);
+    const [watchedSegments, setWatchedSegments] = useState<[number, number][]>([]); // Track watched time ranges
     const { playSound } = useSound();
     const paymentCountRef = useRef(0); // Track payment count for sound throttling
+    const lastChargedSecondRef = useRef(-1); // Track last charged second to avoid double-charging
 
     // Buffer logs to avoid too many re-renders if we sped it up, 
     // but for 1s interval direct state update is fine.
@@ -58,48 +60,83 @@ export function useStreamSession() {
         playSound('stop');
     }, [playSound]);
 
-    useEffect(() => {
-        let interval: NodeJS.Timeout;
+    // Check if a specific second has been watched (paid for)
+    const isSecondWatched = useCallback((second: number) => {
+        return watchedSegments.some(([start, end]) => second >= start && second <= end);
+    }, [watchedSegments]);
 
-        if (isPlaying && (hasSeasonPass || balance > 0)) {
-            interval = setInterval(() => {
-                // Season pass holders watch for free
-                if (hasSeasonPass) {
-                    addLog('STATE_UPDATE', '0.000000', 'SEASON_PASS::FREE_VIEW', {
-                        from: 'SEASON_PASS',
-                        to: 'CREATOR'
-                    });
-                    return;
+    // Add a second to watched segments (merge adjacent ranges)
+    const addWatchedSecond = useCallback((second: number) => {
+        setWatchedSegments(prev => {
+            // Check if already watched
+            if (prev.some(([start, end]) => second >= start && second <= end)) {
+                return prev;
+            }
+
+            // Find adjacent or overlapping segments to merge
+            const newSegments: [number, number][] = [];
+            let merged = false;
+            let newSegment: [number, number] = [second, second];
+
+            for (const [start, end] of prev) {
+                if (second === end + 1) {
+                    // Extends existing segment forward
+                    newSegment = [start, second];
+                    merged = true;
+                } else if (second === start - 1) {
+                    // Extends existing segment backward
+                    newSegment = [second, end];
+                    merged = true;
+                } else if (second >= start && second <= end) {
+                    // Already contained (shouldn't happen due to check above)
+                    return prev;
+                } else {
+                    newSegments.push([start, end]);
                 }
+            }
 
-                const debit = ratePerSecond * (tickMs / 1000);
-                setBalance(prev => {
-                    const newBal = Math.max(0, prev - debit);
-                    if (newBal === 0) {
-                        setIsPlaying(false); // Auto-stop
-                        return 0;
-                    }
-                    return newBal;
-                });
+            newSegments.push(newSegment);
+            return newSegments.sort((a, b) => a[0] - b[0]);
+        });
+    }, []);
 
-                setTotalPaid(prev => prev + debit);
+    // Handle video tick - called from VideoPlayer on time update
+    const onVideoTick = useCallback((currentTime: number) => {
+        if (!isPlaying || hasSeasonPass) return;
 
-                // Simulate a "Signature" from the Yellow Network State Channel
-                const mockSig = "0x" + Math.random().toString(16).slice(2, 10) + "...";
-                addLog('STATE_UPDATE', debit.toFixed(6), mockSig);
-                
-                // Play payment confirmation sound every 5 seconds (5th payment)
-                // to provide feedback without being annoying
-                paymentCountRef.current += 1;
-                if (paymentCountRef.current % 5 === 0) {
-                    playSound('payment');
+        const currentSecond = Math.floor(currentTime);
+
+        // Avoid double-charging the same second
+        if (currentSecond === lastChargedSecondRef.current) return;
+
+        // Only charge if this second hasn't been watched before
+        if (!isSecondWatched(currentSecond)) {
+            const debit = ratePerSecond;
+
+            setBalance(prev => {
+                const newBal = Math.max(0, prev - debit);
+                if (newBal === 0) {
+                    setIsPlaying(false); // Auto-stop when balance runs out
+                    return 0;
                 }
+                return newBal;
+            });
 
-            }, tickMs);
+            setTotalPaid(prev => prev + debit);
+            addWatchedSecond(currentSecond);
+            lastChargedSecondRef.current = currentSecond;
+
+            // Simulate a "Signature" from the Yellow Network State Channel
+            const mockSig = "0x" + Math.random().toString(16).slice(2, 10) + "...";
+            addLog('STATE_UPDATE', debit.toFixed(6), mockSig);
+
+            // Play payment confirmation sound every 5 payments
+            paymentCountRef.current += 1;
+            if (paymentCountRef.current % 5 === 0) {
+                playSound('payment');
+            }
         }
-
-        return () => clearInterval(interval);
-    }, [addLog, balance, isPlaying, playSound, ratePerSecond, tickMs, hasSeasonPass]);
+    }, [isPlaying, hasSeasonPass, isSecondWatched, addWatchedSecond, ratePerSecond, addLog, playSound]);
 
     const topUp = useCallback((amount: number) => {
         setBalance(prev => Math.max(0, prev + amount));
@@ -118,11 +155,11 @@ export function useStreamSession() {
             setHasSeasonPass(false);
             return;
         }
-        
+
         // Check if buyer ENS name matches season pass pattern
         const hasPass = buyerEnsName.endsWith(seasonPassDomain) || buyerEnsName === seasonPassDomain;
         setHasSeasonPass(hasPass);
-        
+
         if (hasPass) {
             addLog('init', '0.0000', 'SEASON_PASS::VALIDATED', {
                 from: 'SYSTEM',
@@ -142,6 +179,7 @@ export function useStreamSession() {
         autopilotEnabled,
         refillStatus,
         hasSeasonPass,
+        watchedSegments,
         setRatePerSecond,
         setTickMs,
         setMinBalance,
@@ -151,6 +189,8 @@ export function useStreamSession() {
         startSession,
         stopSession,
         topUp,
-        resetBalance
+        resetBalance,
+        onVideoTick, // New: callback for video time updates
+        isSecondWatched // New: check if second is already paid for
     };
 }

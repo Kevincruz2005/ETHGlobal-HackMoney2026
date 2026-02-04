@@ -1,74 +1,141 @@
 "use client";
 
-import { Lock, Play } from "lucide-react";
+import { Lock, Play, Pause, SkipForward, SkipBack, Maximize, Download } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import Hls from "hls.js";
 
 interface VideoPlayerProps {
     isUnlocked?: boolean;
     isPlaying?: boolean;
     onVideoTimeUpdate?: (currentTime: number) => void; // Yellow Network heartbeat callback
+    onPlayStateChange?: (playing: boolean) => void; // Sync play/pause state with parent
+    watchedSegments?: [number, number][]; // Segments that have been paid for
 }
 
 export default function VideoPlayer({
     isUnlocked = false,
     isPlaying = false,
-    onVideoTimeUpdate
+    onVideoTimeUpdate,
+    onPlayStateChange,
+    watchedSegments = []
 }: VideoPlayerProps) {
     const [videoError, setVideoError] = useState(false);
     const [videoLoaded, setVideoLoaded] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
+    const [isLoadingSource, setIsLoadingSource] = useState(false);
+    const [showControls, setShowControls] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
+    const hlsRef = useRef<Hls | null>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
-    // Livepeer playback ID for Big Buck Bunny
-    const livepeerPlaybackId = "f5eese9wwl88k4g8";
-    const livepeerSrc = `https://livepeercdn.com/hls/${livepeerPlaybackId}/index.m3u8`;
-
-    // Fallback video sources (more reliable)
-    const fallbackSources = [
-        "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-        "https://www.w3schools.com/html/mov_bbb.mp4",
-        "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4",
-        "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4"
+    // High-reliability video sources (in priority order)
+    const videoSources = [
+        { url: "https://lp-playback.com/hls/f5eese9wwl88k4g8/index.m3u8", type: "hls", label: "HLS" },
+        { url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4", type: "mp4", label: "MP4-1" },
+        { url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4", type: "mp4", label: "MP4-2" }
     ];
 
     const [currentSourceIndex, setCurrentSourceIndex] = useState(0);
-    const [useLivepeer, setUseLivepeer] = useState(false); // Start with fallback for reliability
+    const currentSource = videoSources[currentSourceIndex];
 
-    const getVideoSrc = () => {
-        if (useLivepeer) {
-            return livepeerSrc;
+    // Cleanup HLS instance
+    const cleanupHls = () => {
+        if (hlsRef.current) {
+            console.log('Cleaning up HLS instance');
+            hlsRef.current.destroy();
+            hlsRef.current = null;
         }
-        return fallbackSources[currentSourceIndex];
     };
 
+    // Load video source based on type (HLS or MP4)
+    const loadVideoSource = (source: typeof videoSources[0]) => {
+        const video = videoRef.current;
+        if (!video) return;
+
+        console.log(`Loading video source: ${source.label} (${source.type})`);
+        setIsLoadingSource(true);
+        setVideoLoaded(false);
+
+        // Cleanup previous HLS instance
+        cleanupHls();
+
+        if (source.type === "hls") {
+            // HLS playback
+            if (Hls.isSupported()) {
+                console.log('HLS is supported, using hls.js');
+                const hls = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: false,
+                    debug: false
+                });
+
+                hls.loadSource(source.url);
+                hls.attachMedia(video);
+
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    console.log('HLS manifest parsed successfully');
+                    setVideoLoaded(true);
+                    setIsLoadingSource(false);
+                    setVideoError(false);
+                });
+
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        console.error('Fatal HLS error:', data.type, data.details);
+                        handleSourceError();
+                    } else {
+                        console.warn('Non-fatal HLS error:', data.type, data.details);
+                    }
+                });
+
+                hlsRef.current = hls;
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // Native HLS support (Safari)
+                console.log('Using native HLS playback (Safari)');
+                video.src = source.url;
+            } else {
+                console.log('HLS not supported, trying next source...');
+                handleSourceError();
+            }
+        } else {
+            // MP4 playback
+            console.log('Using standard MP4 playback');
+            video.src = source.url;
+        }
+    };
+
+    // Handle source loading error - try next source
+    const handleSourceError = () => {
+        setIsLoadingSource(false);
+
+        if (currentSourceIndex < videoSources.length - 1) {
+            console.log(`Switching to next source (${currentSourceIndex + 1}/${videoSources.length})`);
+            setCurrentSourceIndex(prev => prev + 1);
+        } else {
+            console.error('All video sources failed');
+            setVideoError(true);
+        }
+    };
+
+    // Handle video element errors
     const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement>) => {
         const videoElement = e.currentTarget;
         const errorCode = videoElement.error?.code;
         const errorMessage = videoElement.error?.message;
 
-        // Only log if there's actual error data to prevent empty object console errors
+        // Only log if there's actual error data
         if (errorCode || errorMessage) {
-            console.error('Video error details:', {
+            console.error('Video playback error:', {
                 code: errorCode,
                 message: errorMessage,
                 src: videoElement.src,
-                networkState: videoElement.networkState,
-                readyState: videoElement.readyState
+                currentSource: currentSource.label
             });
-            console.log(`Video source failed: ${getVideoSrc()}`);
         }
-        // Otherwise, silently try next source without logging
 
-        // Try next source
-        if (useLivepeer) {
-            setUseLivepeer(false);
-        } else if (currentSourceIndex < fallbackSources.length - 1) {
-            setCurrentSourceIndex(prev => prev + 1);
-        } else {
-            // Only show error state if we have exhausted all sources
-            setVideoError(true);
-        }
+        handleSourceError();
     };
 
     // Yellow Network heartbeat: Trigger payment logic on video time update
@@ -86,10 +153,11 @@ export default function VideoPlayer({
 
     // Handle video metadata loaded
     const handleLoadedMetadata = () => {
-        console.log('Video metadata loaded successfully');
+        console.log('Video metadata loaded');
         if (videoRef.current) {
             setDuration(videoRef.current.duration);
             setVideoLoaded(true);
+            setIsLoadingSource(false);
         }
     };
 
@@ -97,56 +165,113 @@ export default function VideoPlayer({
     const handleCanPlay = () => {
         console.log('Video can play');
         setVideoLoaded(true);
+        setIsLoadingSource(false);
     };
+
+    // Load source when index changes
+    useEffect(() => {
+        loadVideoSource(currentSource);
+
+        return () => {
+            cleanupHls();
+        };
+    }, [currentSourceIndex]);
 
     // Control video playback based on stream state
     useEffect(() => {
         if (videoRef.current && videoLoaded) {
             if (isPlaying && isUnlocked) {
-                console.log('Attempting to play video...');
+                console.log('Starting video playback...');
                 videoRef.current.play().then(() => {
-                    console.log('Video playing successfully');
+                    console.log('Video playing');
                 }).catch(err => {
                     console.warn('Video play error:', err);
                     // Try muted play as fallback
                     videoRef.current!.muted = true;
                     videoRef.current!.play().catch(mutedErr => {
-                        console.warn('Muted video play also failed:', mutedErr);
+                        console.warn('Muted play also failed:', mutedErr);
                     });
                 });
             } else {
-                console.log('Pausing video...');
                 videoRef.current.pause();
             }
         }
     }, [isPlaying, isUnlocked, videoLoaded]);
 
-    // Reset states when source changes
-    useEffect(() => {
-        const resetStates = () => {
-            setVideoLoaded(false);
-            setVideoError(false);
-            setCurrentTime(0);
-            setDuration(0);
-        };
-        resetStates();
-
-        // Add timeout to handle cases where video doesn't load
-        const timeout = setTimeout(() => {
-            if (!videoLoaded && !videoError) {
-                // Try next source silently
-                if (useLivepeer) {
-                    setUseLivepeer(false);
-                } else if (currentSourceIndex < fallbackSources.length - 1) {
-                    setCurrentSourceIndex(prev => prev + 1);
-                } else {
-                    setVideoError(true);
-                }
+    // Control handlers
+    const handlePlayPause = () => {
+        if (videoRef.current) {
+            if (isPlaying) {
+                videoRef.current.pause();
+                onPlayStateChange?.(false);
+            } else {
+                videoRef.current.play();
+                onPlayStateChange?.(true);
             }
-        }, 10000); // 10 second timeout
+        }
+    };
 
-        return () => clearTimeout(timeout);
-    }, [useLivepeer, currentSourceIndex]);
+    const handleSeekForward = () => {
+        if (videoRef.current) {
+            videoRef.current.currentTime = Math.min(videoRef.current.duration, videoRef.current.currentTime + 10);
+        }
+    };
+
+    const handleSeekBackward = () => {
+        if (videoRef.current) {
+            videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10);
+        }
+    };
+
+    const handleFullscreen = () => {
+        if (containerRef.current) {
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            } else {
+                containerRef.current.requestFullscreen();
+            }
+        }
+    };
+
+    const handleDownload = async () => {
+        if (!currentSource || isDownloading) return;
+
+        try {
+            setIsDownloading(true);
+            console.log('Starting download...', currentSource.url);
+
+            const response = await fetch(currentSource.url, {
+                mode: 'cors'
+            });
+
+            if (!response.ok) throw new Error('Download failed');
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `video-${Date.now()}.${currentSource.type === 'hls' ? 'm3u8' : 'mp4'}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+
+            console.log('Download complete');
+        } catch (error) {
+            console.error('Download error:', error);
+            // Fallback: open in new tab
+            window.open(currentSource.url, '_blank');
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
+    // Manual source switching
+    const switchSource = () => {
+        const nextIndex = (currentSourceIndex + 1) % videoSources.length;
+        console.log(`Manual switch to source ${nextIndex}`);
+        setCurrentSourceIndex(nextIndex);
+    };
 
     if (videoError) {
         return (
@@ -156,27 +281,37 @@ export default function VideoPlayer({
                         <Lock className="w-8 h-8 text-red-400" />
                     </div>
                     <h3 className="text-xl font-bold text-white mb-2">Video Unavailable</h3>
-                    <p className="text-zinc-400 text-sm">Unable to load video stream</p>
+                    <p className="text-zinc-400 text-sm">All video sources failed to load</p>
+                    <button
+                        onClick={() => {
+                            setVideoError(false);
+                            setCurrentSourceIndex(0);
+                        }}
+                        className="mt-4 px-4 py-2 bg-[#4DA2FF] text-black rounded-lg hover:bg-[#3A8BEE] transition-colors"
+                    >
+                        Retry
+                    </button>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden border border-zinc-800 shadow-2xl">
+        <div
+            ref={containerRef}
+            className="relative w-full aspect-video bg-black rounded-xl overflow-hidden border border-zinc-800 shadow-2xl"
+            onMouseEnter={() => setShowControls(true)}
+            onMouseLeave={() => setShowControls(false)}
+        >
             {/* Video Source Indicator & Controls */}
             <div className="absolute top-2 right-2 z-20 flex gap-2">
                 <div className="px-2 py-1 bg-black/60 rounded text-[10px] font-mono">
-                    {useLivepeer ? "LIVEPEER" : `FALLBACK ${currentSourceIndex + 1}`}
+                    {currentSource.label}
                 </div>
                 <button
-                    onClick={() => {
-                        console.log('Toggling video source...');
-                        setUseLivepeer(!useLivepeer);
-                        setCurrentSourceIndex(0);
-                    }}
+                    onClick={switchSource}
                     className="px-2 py-1 bg-[#4DA2FF]/20 hover:bg-[#4DA2FF]/30 rounded text-[10px] font-mono text-[#4DA2FF] border border-[#4DA2FF]/30 transition-colors"
-                    title="Toggle between Livepeer and fallback sources"
+                    title="Switch video source"
                 >
                     SWITCH
                 </button>
@@ -185,36 +320,41 @@ export default function VideoPlayer({
             {/* Video Element */}
             <video
                 ref={videoRef}
-                key={getVideoSrc()}
                 className="w-full h-full object-cover"
-                src={getVideoSrc()}
-                crossOrigin="anonymous" // Handle cross-origin issues
-                controls={false} // Hide default controls for matrix feel
+                crossOrigin="anonymous"
+                controls={false}
                 autoPlay={false}
-                muted={true} // Start muted for autoplay compatibility
+                muted={true}
                 loop
                 playsInline
-                preload="metadata" // Load metadata for better performance
-                onLoadStart={() => {
-                    console.log('Video load start:', getVideoSrc());
-                    setVideoLoaded(false);
-                }}
-                onCanPlay={handleCanPlay}
+                preload="metadata"
                 onLoadedMetadata={handleLoadedMetadata}
+                onCanPlay={handleCanPlay}
                 onError={handleVideoError}
-                onTimeUpdate={handleTimeUpdate} // Yellow Network heartbeat trigger
-                onPlay={() => console.log('Video play event fired')}
-                onPause={() => console.log('Video pause event fired')}
-                onEnded={() => console.log('Video ended')}
-                onStalled={() => console.log('Video stalled - network issue')}
-                onSuspend={() => console.log('Video suspended - browser paused loading')}
-                onAbort={() => console.log('Video loading aborted')}
-                onEmptied={() => console.log('Video emptied')}
+                onTimeUpdate={handleTimeUpdate}
+                onPlay={() => console.log('Video play event')}
+                onPause={() => console.log('Video pause event')}
             />
 
-            {/* Video Progress Bar (Yellow Network integration) */}
+            {/* Video Progress Bar with Watched Segments */}
             {isUnlocked && videoLoaded && (
                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-zinc-800 z-20">
+                    {/* Watched segments (green) */}
+                    {watchedSegments.map(([start, end], index) => {
+                        const startPercent = (start / duration) * 100;
+                        const widthPercent = ((end - start + 1) / duration) * 100;
+                        return (
+                            <div
+                                key={index}
+                                className="absolute h-full bg-green-500/60"
+                                style={{
+                                    left: `${startPercent}%`,
+                                    width: `${widthPercent}%`
+                                }}
+                            />
+                        );
+                    })}
+                    {/* Current playback position */}
                     <div
                         className="h-full bg-[#4DA2FF] transition-all duration-300"
                         style={{ width: `${(currentTime / duration) * 100 || 0}%` }}
@@ -225,12 +365,11 @@ export default function VideoPlayer({
             {/* Debug Information */}
             {process.env.NODE_ENV === 'development' && (
                 <div className="absolute bottom-8 left-2 z-20 px-2 py-1 bg-black/80 rounded text-[8px] font-mono text-green-400 max-w-xs">
-                    <div>Src: {useLivepeer ? 'LIVEPEER' : `FALLBACK${currentSourceIndex + 1}`}</div>
+                    <div>Source: {currentSource.label} ({currentSource.type})</div>
                     <div>Loaded: {videoLoaded ? 'YES' : 'NO'}</div>
                     <div>Playing: {isPlaying ? 'YES' : 'NO'}</div>
                     <div>Unlocked: {isUnlocked ? 'YES' : 'NO'}</div>
-                    <div>Time: {Math.floor(currentTime)}s</div>
-                    <div>Duration: {Math.floor(duration)}s</div>
+                    <div>Time: {Math.floor(currentTime)}s / {Math.floor(duration)}s</div>
                 </div>
             )}
 
@@ -243,32 +382,84 @@ export default function VideoPlayer({
                     <h3 className="text-xl font-bold text-white mb-2 tracking-tight">Content Locked</h3>
                     <p className="text-zinc-400 text-sm font-medium">Add USDC and start stream to watch</p>
                     <div className="mt-4 px-4 py-2 bg-[#4DA2FF]/10 rounded-lg border border-[#4DA2FF]/20">
-                        <p className="text-[#4DA2FF] text-xs font-mono">Balance: ${isUnlocked ? "UNLOCKED" : "0.0000 USDC"}</p>
+                        <p className="text-[#4DA2FF] text-xs font-mono">Balance: $0.0000 USDC</p>
                     </div>
                 </div>
             )}
 
             {/* Ready to Play State */}
-            {isUnlocked && !isPlaying && (
+            {isUnlocked && !isPlaying && !isLoadingSource && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-10">
                     <div className="text-center">
                         <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-[#4DA2FF]/20 flex items-center justify-center">
                             <Play className="w-8 h-8 text-[#4DA2FF]" />
                         </div>
-                        <p className="text-white text-sm font-medium">Click &quot;Start Stream&quot; to begin</p>
-                        <p className="text-zinc-400 text-xs mt-1">Livepeer stream ready • {useLivepeer ? "HLS" : "MP4"}</p>
+                        <p className="text-white text-sm font-medium">Click "Start Stream" to begin</p>
+                        <p className="text-zinc-400 text-xs mt-1">{currentSource.label} stream ready</p>
                     </div>
                 </div>
             )}
 
             {/* Loading State */}
-            {isUnlocked && isPlaying && !videoLoaded && (
+            {isLoadingSource && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-10">
                     <div className="text-center">
                         <div className="w-12 h-12 mx-auto mb-3 rounded-full border-2 border-[#4DA2FF] border-t-transparent animate-spin"></div>
                         <p className="text-white text-sm font-medium">Loading stream...</p>
-                        <p className="text-zinc-400 text-xs mt-1">{useLivepeer ? "Connecting to Livepeer" : "Loading video"}</p>
+                        <p className="text-zinc-400 text-xs mt-1">Connecting to {currentSource.label}</p>
                     </div>
+                </div>
+            )}
+
+            {/* Custom Control Bar */}
+            {isUnlocked && videoLoaded && showControls && (
+                <div className="absolute bottom-12 left-0 right-0 z-30 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-t from-black/80 to-transparent backdrop-blur-sm">
+                    <button
+                        onClick={handleSeekBackward}
+                        className="p-2 rounded-full bg-black/60 hover:bg-[#4DA2FF]/20 border border-[#4DA2FF]/30 transition-all hover:scale-110"
+                        title="Rewind 10 seconds (FREE)"
+                    >
+                        <SkipBack className="w-5 h-5 text-[#4DA2FF]" />
+                    </button>
+
+                    <button
+                        onClick={handlePlayPause}
+                        className="p-3 rounded-full bg-[#4DA2FF]/20 hover:bg-[#4DA2FF]/30 border border-[#4DA2FF] transition-all hover:scale-110 shadow-lg shadow-[#4DA2FF]/20"
+                        title={isPlaying ? "Pause" : "Play"}
+                    >
+                        {isPlaying ? (
+                            <Pause className="w-6 h-6 text-[#4DA2FF]" />
+                        ) : (
+                            <Play className="w-6 h-6 text-[#4DA2FF]" />
+                        )}
+                    </button>
+
+                    <button
+                        onClick={handleSeekForward}
+                        className="p-2 rounded-full bg-black/60 hover:bg-[#4DA2FF]/20 border border-[#4DA2FF]/30 transition-all hover:scale-110"
+                        title="Forward 10 seconds"
+                    >
+                        <SkipForward className="w-5 h-5 text-[#4DA2FF]" />
+                    </button>
+
+                    <div className="flex-1" />
+
+                    <button
+                        onClick={handleDownload}
+                        disabled={isDownloading}
+                        className="p-2 rounded-full bg-black/60 hover:bg-[#4DA2FF]/20 border border-[#4DA2FF]/30 transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={isDownloading ? "Downloading..." : "Download Video"}
+                    >
+                        <Download className={`w-5 h-5 text-[#4DA2FF] ${isDownloading ? 'animate-bounce' : ''}`} />
+                    </button>
+
+                    <button
+                        onClick={handleFullscreen}
+                        className="p-2 rounded-full bg-black/60 hover:bg-[#4DA2FF]/20 border border-[#4DA2FF]/30 transition-all hover:scale-110"
+                        title="Toggle Fullscreen"
+                    >
+                        <Maximize className="w-5 h-5 text-[#4DA2FF]" />
+                    </button>
                 </div>
             )}
 

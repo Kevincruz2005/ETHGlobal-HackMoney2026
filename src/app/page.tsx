@@ -33,12 +33,15 @@ export default function Home() {
     autopilotEnabled,
     refillStatus,
     hasSeasonPass,
+    watchedSegments,
     setTickMs,
     setMinBalance,
     setAutopilotEnabled,
     setRefillStatus,
     setRatePerSecond,
     validateSeasonPass,
+    onVideoTick, // NEW: pay-per-view-once callback
+    isSecondWatched // NEW: check if second is already paid for
   } = useStreamSession();
   const creatorMetadata = useNitroCreatorMetadata(DEMO_CREATOR_ADDRESS);
   const { address: buyerAddress } = useAccount();
@@ -119,15 +122,20 @@ export default function Home() {
             {viewMode === "Human" ? (
               <>
                 <div className="relative w-full backdrop-blur-glass rounded-xl border border-[#4DA2FF]/20 animate-pulse-glow">
-                  <VideoPlayer 
-                    isUnlocked={balance > 0} 
-                    isPlaying={isPlaying} 
+                  <VideoPlayer
+                    isUnlocked={balance > 0 || hasSeasonPass}
+                    isPlaying={isPlaying}
+                    watchedSegments={watchedSegments}
                     onVideoTimeUpdate={(currentTime) => {
-                      // Yellow Network heartbeat: Trigger payment logic when video time moves forward
-                      if (isPlaying && !hasSeasonPass && balance > 0) {
-                        // This is triggered every time the video clock moves forward
-                        // You can add additional payment logic here based on currentTime
-                        console.log(`Yellow Network heartbeat: Video at ${currentTime}s`);
+                      // Pay-per-view-once: Only charges for NEW content
+                      onVideoTick(currentTime);
+                    }}
+                    onPlayStateChange={(playing) => {
+                      // Sync play state from video controls
+                      if (playing && !isPlaying) {
+                        startSession();
+                      } else if (!playing && isPlaying) {
+                        stopSession();
                       }
                     }}
                   />
@@ -159,7 +167,7 @@ export default function Home() {
             )}
 
             {/* Stream Controls */}
-            <div className="flex items-center justify-between p-4 backdrop-blur-glass rounded-xl border border-[#4DA2FF]/20 transition-all hover:border-[#4DA2FF]/30">
+            <div className="relative z-30 flex items-center justify-between p-4 backdrop-blur-glass rounded-xl border border-[#4DA2FF]/20 transition-all hover:border-[#4DA2FF]/30">
               {/* View Mode Toggle */}
               <div className="flex items-center gap-2 mr-4">
                 <button
@@ -249,12 +257,12 @@ export default function Home() {
                   </div>
                   {autopilotEnabled && (
                     <p className="text-[10px] text-zinc-600 mt-1">
-                      {hasSeasonPass 
+                      {hasSeasonPass
                         ? "Season pass active: unlimited viewing"
-                        : refillStatus === "prompting" 
-                          ? "Refill intent: prompting" 
-                          : refillStatus === "credited" 
-                            ? "Refill: credited" 
+                        : refillStatus === "prompting"
+                          ? "Refill intent: prompting"
+                          : refillStatus === "credited"
+                            ? "Refill: credited"
                             : "Guard active"
                       }
                     </p>
@@ -279,9 +287,9 @@ export default function Home() {
                   <div className="flex items-center gap-2">
                     <span className={cn("font-mono text-xl font-bold tracking-tight transition-colors",
                       hasSeasonPass ? "text-gradient bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent" :
-                      balance < 0.5 ? "text-red-400" : "text-white"
+                        balance < 0.5 ? "text-red-400" : "text-white"
                     )}>
-                      {hasSeasonPass ? "∞" : `$${balance.toFixed(4)}`} 
+                      {hasSeasonPass ? "∞" : `$${balance.toFixed(4)}`}
                       <span className="text-sm text-zinc-600 font-normal ml-1">
                         {hasSeasonPass ? "FREE" : "USDC"}
                       </span>
@@ -306,62 +314,62 @@ export default function Home() {
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Sidebar: Logs / Chat */}
-        <div className="lg:col-span-1 backdrop-blur-glass rounded-xl border border-[#4DA2FF]/20 flex flex-col overflow-hidden h-full border-glow">
-          <div className="p-3 border-b border-[#4DA2FF]/10 bg-black flex justify-between items-center">
-            <span className="text-[10px] font-mono text-[#4DA2FF] uppercase tracking-widest text-glow">Yellow Network Logs</span>
-            <div className="flex gap-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#4DA2FF] animate-pulse" />
-              <div className="w-1.5 h-1.5 rounded-full bg-[#4DA2FF]" />
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-hidden relative">
-            <MatrixLog 
-              logs={logs} 
-              buyerLabel={buyerLabel} 
-              sellerLabel={sellerLabel}
-              buyerEnsName={buyerEnsName || undefined}
-              sellerEnsName={creatorMetadata.ensName || undefined}
-            />
-          </div>
-
-          {/* Enhanced Demo Controls */}
-          <div className="p-3 border-t border-[#4DA2FF]/10 bg-black">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[9px] text-[#A8C7E8] font-mono uppercase tracking-wider">Simulation Controls</span>
+          {/* Sidebar: Logs / Chat */}
+          <div className="lg:col-span-1 backdrop-blur-glass rounded-xl border border-[#4DA2FF]/20 flex flex-col overflow-hidden h-full border-glow">
+            <div className="p-3 border-b border-[#4DA2FF]/10 bg-black flex justify-between items-center">
+              <span className="text-[10px] font-mono text-[#4DA2FF] uppercase tracking-widest text-glow">Yellow Network Logs</span>
               <div className="flex gap-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                <div className="w-1.5 h-1.5 rounded-full bg-[#4DA2FF] animate-pulse" />
+                <div className="w-1.5 h-1.5 rounded-full bg-[#4DA2FF]" />
               </div>
             </div>
-            <div className="flex gap-2">
-              <AnimatedButton 
-                onClick={() => topUp(5.0000)} 
-                size="sm" 
-                variant="secondary"
-              >
-                +5 USDC
-              </AnimatedButton>
-              <AnimatedButton 
-                onClick={() => topUp(1.0000)} 
-                size="sm" 
-                variant="secondary"
-              >
-                +1 USDC
-              </AnimatedButton>
-              <AnimatedButton 
-                onClick={() => {
-                  topUp(-balance);
-                  stopSession();
-                }} 
-                size="sm" 
-                variant="danger"
-              >
-                RESET
-              </AnimatedButton>
+
+            <div className="flex-1 overflow-hidden relative">
+              <MatrixLog
+                logs={logs}
+                buyerLabel={buyerLabel}
+                sellerLabel={sellerLabel}
+                buyerEnsName={buyerEnsName || undefined}
+                sellerEnsName={creatorMetadata.ensName || undefined}
+              />
+            </div>
+
+            {/* Enhanced Demo Controls */}
+            <div className="p-3 border-t border-[#4DA2FF]/10 bg-black">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[9px] text-[#A8C7E8] font-mono uppercase tracking-wider">Simulation Controls</span>
+                <div className="flex gap-1">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <AnimatedButton
+                  onClick={() => topUp(5.0000)}
+                  size="sm"
+                  variant="secondary"
+                >
+                  +5 USDC
+                </AnimatedButton>
+                <AnimatedButton
+                  onClick={() => topUp(1.0000)}
+                  size="sm"
+                  variant="secondary"
+                >
+                  +1 USDC
+                </AnimatedButton>
+                <AnimatedButton
+                  onClick={() => {
+                    topUp(-balance);
+                    stopSession();
+                  }}
+                  size="sm"
+                  variant="danger"
+                >
+                  RESET
+                </AnimatedButton>
+              </div>
             </div>
           </div>
         </div>
