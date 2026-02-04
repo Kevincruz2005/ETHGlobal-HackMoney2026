@@ -1,6 +1,7 @@
 "use client";
 
 import VideoPlayer from "@/components/VideoPlayer";
+import VideoSearch from "@/components/VideoSearch";
 import MatrixLog from "@/components/MatrixLog";
 import SmartTopUp from "@/components/SmartTopUp";
 import CreatorProfile from "@/components/CreatorProfile";
@@ -15,10 +16,16 @@ import { Monitor, Bot } from "lucide-react";
 import { useAccount, useEnsName } from "wagmi";
 import { mainnet } from "wagmi/chains";
 
-// Vitalik's address for demo ENS resolution
-const DEMO_CREATOR_ADDRESS = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" as const;
+// Demo creator address and season pass domain
+const DEMO_CREATOR_ADDRESS = '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1';
+const SEASON_PASS_DOMAIN = 'nitrogate.eth';
 
 export default function Home() {
+  const [agentMode, setAgentMode] = useState(false);
+  const [currentVideoUrl, setCurrentVideoUrl] = useState("");
+  const [currentVideoTitle, setCurrentVideoTitle] = useState("");
+  const [currentVideoType, setCurrentVideoType] = useState<'hls' | 'mp4'>('mp4');
+
   const {
     balance,
     logs,
@@ -34,14 +41,18 @@ export default function Home() {
     refillStatus,
     hasSeasonPass,
     watchedSegments,
+    selectedQuality,
     setTickMs,
     setMinBalance,
     setAutopilotEnabled,
     setRefillStatus,
     setRatePerSecond,
+    setSelectedQuality,
     validateSeasonPass,
-    onVideoTick, // NEW: pay-per-view-once callback
-    isSecondWatched // NEW: check if second is already paid for
+    onVideoTick,
+    isSecondWatched,
+    getTotalWatchedSeconds,
+    getEffectiveRate
   } = useStreamSession();
   const creatorMetadata = useNitroCreatorMetadata(DEMO_CREATOR_ADDRESS);
   const { address: buyerAddress } = useAccount();
@@ -121,11 +132,28 @@ export default function Home() {
           <div className="lg:col-span-3 flex flex-col gap-4">
             {viewMode === "Human" ? (
               <>
+                {/* Video Search */}
+                <div className="mb-4">
+                  <VideoSearch
+                    onVideoSelect={(url, title, type) => {
+                      setCurrentVideoUrl(url);
+                      setCurrentVideoTitle(title);
+                      setCurrentVideoType(type);
+                    }}
+                  />
+                </div>
+
+                {/* Video Player */}
                 <div className="relative w-full backdrop-blur-glass rounded-xl border border-[#4DA2FF]/20 animate-pulse-glow">
                   <VideoPlayer
                     isUnlocked={balance > 0 || hasSeasonPass}
                     isPlaying={isPlaying}
                     watchedSegments={watchedSegments}
+                    selectedQuality={selectedQuality}
+                    onQualityChange={setSelectedQuality}
+                    totalPaid={totalPaid}
+                    getTotalWatchedSeconds={getTotalWatchedSeconds}
+                    currentVideoTitle={currentVideoTitle || "Video"}
                     onVideoTimeUpdate={(currentTime) => {
                       // Pay-per-view-once: Only charges for NEW content
                       onVideoTick(currentTime);

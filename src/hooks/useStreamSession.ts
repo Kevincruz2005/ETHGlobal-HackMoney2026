@@ -26,9 +26,18 @@ export function useStreamSession() {
     const [refillStatus, setRefillStatus] = useState<'idle' | 'prompting' | 'bridging' | 'credited' | 'failed'>('idle');
     const [hasSeasonPass, setHasSeasonPass] = useState(false);
     const [watchedSegments, setWatchedSegments] = useState<[number, number][]>([]); // Track watched time ranges
+    const [selectedQuality, setSelectedQuality] = useState<'480p' | '720p' | '1080p' | '4k'>('720p');
     const { playSound } = useSound();
     const paymentCountRef = useRef(0); // Track payment count for sound throttling
     const lastChargedSecondRef = useRef(-1); // Track last charged second to avoid double-charging
+
+    // Quality pricing multipliers
+    const qualityMultipliers = {
+        '480p': 0.5,
+        '720p': 1.0,
+        '1080p': 2.0,
+        '4k': 4.0
+    };
 
     // Buffer logs to avoid too many re-renders if we sped it up, 
     // but for 1s interval direct state update is fine.
@@ -111,7 +120,9 @@ export function useStreamSession() {
 
         // Only charge if this second hasn't been watched before
         if (!isSecondWatched(currentSecond)) {
-            const debit = ratePerSecond;
+            // Apply quality multiplier to base rate
+            const effectiveRate = ratePerSecond * qualityMultipliers[selectedQuality];
+            const debit = effectiveRate;
 
             setBalance(prev => {
                 const newBal = Math.max(0, prev - debit);
@@ -136,7 +147,7 @@ export function useStreamSession() {
                 playSound('payment');
             }
         }
-    }, [isPlaying, hasSeasonPass, isSecondWatched, addWatchedSecond, ratePerSecond, addLog, playSound]);
+    }, [isPlaying, hasSeasonPass, isSecondWatched, addWatchedSecond, ratePerSecond, selectedQuality, qualityMultipliers, addLog, playSound]);
 
     const topUp = useCallback((amount: number) => {
         setBalance(prev => Math.max(0, prev + amount));
@@ -168,6 +179,18 @@ export function useStreamSession() {
         }
     }, [addLog]);
 
+    // Calculate total watched seconds
+    const getTotalWatchedSeconds = useCallback(() => {
+        return watchedSegments.reduce((total, [start, end]) => {
+            return total + (end - start + 1);
+        }, 0);
+    }, [watchedSegments]);
+
+    // Get effective rate with quality multiplier
+    const getEffectiveRate = useCallback(() => {
+        return ratePerSecond * qualityMultipliers[selectedQuality];
+    }, [ratePerSecond, selectedQuality, qualityMultipliers]);
+
     return {
         balance,
         logs,
@@ -180,17 +203,21 @@ export function useStreamSession() {
         refillStatus,
         hasSeasonPass,
         watchedSegments,
+        selectedQuality,
         setRatePerSecond,
         setTickMs,
         setMinBalance,
         setAutopilotEnabled,
         setRefillStatus,
+        setSelectedQuality,
         validateSeasonPass,
         startSession,
         stopSession,
         topUp,
         resetBalance,
-        onVideoTick, // New: callback for video time updates
-        isSecondWatched // New: check if second is already paid for
+        onVideoTick, // callback for video time updates
+        isSecondWatched, // check if second is already paid for
+        getTotalWatchedSeconds, // get total seconds watched
+        getEffectiveRate // get rate with quality multiplier
     };
 }

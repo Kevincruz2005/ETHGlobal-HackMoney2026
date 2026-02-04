@@ -3,6 +3,7 @@
 import { Lock, Play, Pause, SkipForward, SkipBack, Maximize, Download } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import Hls from "hls.js";
+import DownloadConfirmation from "./DownloadConfirmation";
 
 interface VideoPlayerProps {
     isUnlocked?: boolean;
@@ -10,6 +11,11 @@ interface VideoPlayerProps {
     onVideoTimeUpdate?: (currentTime: number) => void; // Yellow Network heartbeat callback
     onPlayStateChange?: (playing: boolean) => void; // Sync play/pause state with parent
     watchedSegments?: [number, number][]; // Segments that have been paid for
+    selectedQuality?: '480p' | '720p' | '1080p' | '4k';
+    onQualityChange?: (quality: '480p' | '720p' | '1080p' | '4k') => void;
+    totalPaid?: number;
+    getTotalWatchedSeconds?: () => number;
+    currentVideoTitle?: string;
 }
 
 export default function VideoPlayer({
@@ -17,7 +23,12 @@ export default function VideoPlayer({
     isPlaying = false,
     onVideoTimeUpdate,
     onPlayStateChange,
-    watchedSegments = []
+    watchedSegments = [],
+    selectedQuality = '720p',
+    onQualityChange,
+    totalPaid = 0,
+    getTotalWatchedSeconds,
+    currentVideoTitle = "Video"
 }: VideoPlayerProps) {
     const [videoError, setVideoError] = useState(false);
     const [videoLoaded, setVideoLoaded] = useState(false);
@@ -26,6 +37,7 @@ export default function VideoPlayer({
     const [isLoadingSource, setIsLoadingSource] = useState(false);
     const [showControls, setShowControls] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
+    const [showDownloadModal, setShowDownloadModal] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
     const hlsRef = useRef<Hls | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -233,7 +245,12 @@ export default function VideoPlayer({
         }
     };
 
-    const handleDownload = async () => {
+    const handleDownload = () => {
+        // Show confirmation modal first
+        setShowDownloadModal(true);
+    };
+
+    const actualDownload = async () => {
         if (!currentSource || isDownloading) return;
 
         try {
@@ -250,7 +267,7 @@ export default function VideoPlayer({
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `video-${Date.now()}.${currentSource.type === 'hls' ? 'm3u8' : 'mp4'}`;
+            a.download = `${currentVideoTitle}-${selectedQuality}-${Date.now()}.${currentSource.type === 'hls' ? 'm3u8' : 'mp4'}`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -303,11 +320,29 @@ export default function VideoPlayer({
             onMouseEnter={() => setShowControls(true)}
             onMouseLeave={() => setShowControls(false)}
         >
-            {/* Video Source Indicator & Controls */}
+            {/* Video Source Indicator & Quality Selector */}
             <div className="absolute top-2 right-2 z-20 flex gap-2">
+                {/* Quality Selector */}
+                {onQualityChange && (
+                    <select
+                        value={selectedQuality}
+                        onChange={(e) => onQualityChange(e.target.value as '480p' | '720p' | '1080p' | '4k')}
+                        className="px-2 py-1 bg-black/80 text-[#4DA2FF] text-[10px] font-mono rounded border border-[#4DA2FF]/40 hover:border-[#4DA2FF]/60 transition-colors cursor-pointer"
+                        title="Select video quality"
+                    >
+                        <option value="480p">480p (0.5×)</option>
+                        <option value="720p">720p (1×)</option>
+                        <option value="1080p">1080p (2×)</option>
+                        <option value="4k">4K (4×)</option>
+                    </select>
+                )}
+
+                {/* Source Indicator */}
                 <div className="px-2 py-1 bg-black/60 rounded text-[10px] font-mono">
                     {currentSource.label}
                 </div>
+
+                {/* Switch Source Button */}
                 <button
                     onClick={switchSource}
                     className="px-2 py-1 bg-[#4DA2FF]/20 hover:bg-[#4DA2FF]/30 rounded text-[10px] font-mono text-[#4DA2FF] border border-[#4DA2FF]/30 transition-colors"
@@ -470,6 +505,18 @@ export default function VideoPlayer({
                     <span className="text-[10px] font-bold text-[#4DA2FF] tracking-wider">YELLOW::ACTIVE</span>
                 </div>
             )}
+
+            {/* Download Confirmation Modal */}
+            <DownloadConfirmation
+                isOpen={showDownloadModal}
+                onClose={() => setShowDownloadModal(false)}
+                onConfirm={actualDownload}
+                videoTitle={currentVideoTitle}
+                quality={selectedQuality}
+                totalWatchedSeconds={getTotalWatchedSeconds ? getTotalWatchedSeconds() : 0}
+                streamingCost={totalPaid}
+                downloadFee={0.0050}
+            />
         </div>
     );
 }
