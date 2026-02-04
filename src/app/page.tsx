@@ -119,7 +119,18 @@ export default function Home() {
             {viewMode === "Human" ? (
               <>
                 <div className="relative w-full backdrop-blur-glass rounded-xl border border-[#4DA2FF]/20 animate-pulse-glow">
-                  <VideoPlayer isUnlocked={balance > 0} isPlaying={isPlaying} />
+                  <VideoPlayer 
+                    isUnlocked={balance > 0} 
+                    isPlaying={isPlaying} 
+                    onVideoTimeUpdate={(currentTime) => {
+                      // Yellow Network heartbeat: Trigger payment logic when video time moves forward
+                      if (isPlaying && !hasSeasonPass && balance > 0) {
+                        // This is triggered every time the video clock moves forward
+                        // You can add additional payment logic here based on currentTime
+                        console.log(`Yellow Network heartbeat: Video at ${currentTime}s`);
+                      }
+                    }}
+                  />
 
                   {/* Overlay Badge for "Yellow Network" */}
                   {isPlaying && (
