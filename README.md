@@ -2,6 +2,9 @@
 
 > **The Netflix of Web3** — Pay per second, not per month.
 
+[![Yellow Network](https://img.shields.io/badge/Powered%20by-Yellow%20Network-FACC15?style=for-the-badge)](https://yellow.org)
+[![LI.FI](https://img.shields.io/badge/Bridge-LI.FI-8B5CF6?style=for-the-badge)](https://li.fi)
+[![ENS](https://img.shields.io/badge/Identity-ENS-5298FF?style=for-the-badge)](https://ens.domains)
 
 ---
 
@@ -9,6 +12,28 @@
 
 NitroGate is an **omnichain video streaming platform** where money flows from viewer to creator in real-time. Watch for 10 seconds, pay for 10 seconds. Stop watching, stop paying.
 
+### The Problem
+
+| Issue | Web2 Solution | Web3 Reality |
+|-------|---------------|--------------|
+| **Subscription Fatigue** | Pay $15/month for one video | No alternative |
+| **Micropayment Wall** | N/A | $5 gas for $0.001 payment |
+| **Liquidity Fragmentation** | N/A | Money stuck on wrong chain |
+
+### The Solution: The Trinity Architecture
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│  🟡 YELLOW      │    │  ⚡ LI.FI       │    │  🏷️ ENS         │
+│  State Channels │ ←→ │  Cross-Chain    │ ←→ │  Identity       │
+│  (THE ENGINE)   │    │  (THE BRIDGE)   │    │  (THE TRUST)    │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+        ↓                      ↓                      ↓
+   Zero Gas Fees         Any Chain →            Verified
+   100ms Latency         Base Sepolia           Creator Profiles
+```
+
+---
 
 ## ✨ Key Features
 
@@ -94,3 +119,16 @@ nitrogate/
 
 ---
 
+## 🏆 Hackathon Submission
+
+This project was built for **HackMoney 2026** targeting:
+
+- 🟡 **Yellow Network** — State channel integration for gasless payments
+- ⚡ **LI.FI** — Cross-chain bridging for universal liquidity
+- 🏷️ **ENS** — Creator identity and trust layer
+
+---
+
+## 📄 License
+
+MIT License

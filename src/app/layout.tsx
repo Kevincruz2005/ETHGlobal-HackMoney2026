@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/Header";
+import Navigation from "@/components/Navigation";
 import { cn } from "@/lib/utils";
 import { Web3Provider } from "@/providers/Web3Provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "NitroGate",
-  description: "The Netflix of Web3 - Pay per second streaming.",
+  title: "NitroGate - Pay-Per-Second Cinema",
+  description: "The Netflix of Web3 - Pay per second streaming powered by Yellow Network, LI.FI, and ENS.",
 };
 
 export default function RootLayout({
@@ -19,9 +19,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={cn(inter.className, "bg-zinc-950 text-white min-h-screen antialiased")}>
+      <body className={cn(inter.className, "bg-[#050505] text-white min-h-screen antialiased")}>
         <Web3Provider>
-          <Header />
+          <Navigation />
           <main className="min-h-screen pt-20">
             {children}
           </main>
