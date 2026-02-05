@@ -96,36 +96,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## 📁 Project Structure
 
-```
-nitrogate/
-├── src/
-│   ├── app/
-│   │   ├── page.tsx          # Main dashboard
-│   │   └── layout.tsx        # Root layout + Web3Provider
-│   ├── components/
-│   │   ├── VideoPlayer.tsx   # Video with lock overlay
-│   │   ├── MatrixLog.tsx     # Terminal-style log viewer
-│   │   ├── SmartTopUp.tsx    # LI.FI bridge modal
-│   │   ├── CreatorProfile.tsx # ENS-powered profile
-│   │   ├── AgentView.tsx     # JSON API for AI
-│   │   └── Header.tsx        # Connect button
-│   ├── hooks/
-│   │   └── useStreamSession.ts # State channel simulation
-│   └── providers/
-│       └── Web3Provider.tsx  # Wagmi + RainbowKit config
-```
-
----
-
-## 🏆 Hackathon Submission
-
-This project was built for **HackMoney 2026** targeting:
-
-- 🟡 **Yellow Network** — State channel integration for gasless payments
-- ⚡ **LI.FI** — Cross-chain bridging for universal liquidity
-- 🏷️ **ENS** — Creator identity and trust layer
 
 ---
 

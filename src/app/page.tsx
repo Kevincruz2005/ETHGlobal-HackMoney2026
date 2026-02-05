@@ -1,184 +1,267 @@
 "use client";
 
-import VideoPlayer from "@/components/VideoPlayer";
-import VideoSearch from "@/components/VideoSearch";
-import VaultDashboard from "@/components/VaultDashboard";
-import CinemaControls from "@/components/CinemaControls";
-import NetworkMatrix from "@/components/NetworkMatrix";
-import SmartTopUp from "@/components/SmartTopUp";
-import { useStreamSession } from "@/hooks/useStreamSession";
-import { useNitroCreatorMetadata } from "@/hooks/useNitroCreatorMetadata";
-import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useAccount, useEnsName } from "wagmi";
 import { mainnet } from "wagmi/chains";
+import { Zap, Shield, Coins, Film, Sparkles, ArrowRight } from "lucide-react";
+import { motion } from "framer-motion";
 
-// Demo creator address
-const DEMO_CREATOR_ADDRESS = '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1';
-
-export default function Home() {
-  const [currentVideoUrl, setCurrentVideoUrl] = useState("");
-  const [currentVideoTitle, setCurrentVideoTitle] = useState("");
-  const [currentVideoType, setCurrentVideoType] = useState<'hls' | 'mp4'>('mp4');
-  const [isTopUpOpen, setIsTopUpOpen] = useState(false);
-
-  const {
-    balance,
-    logs,
-    isPlaying,
-    startSession,
-    stopSession,
-    topUp,
-    totalPaid,
-    ratePerSecond,
-    hasSeasonPass,
-    watchedSegments,
-    selectedQuality,
-    setSelectedQuality,
-    validateSeasonPass,
-    onVideoTick,
-    getTotalWatchedSeconds,
-    getEffectiveRate,
-    refillStatus,
-    setRefillStatus,
-    autopilotEnabled,
-    minBalance,
-    setRatePerSecond
-  } = useStreamSession();
-
-  const creatorMetadata = useNitroCreatorMetadata(DEMO_CREATOR_ADDRESS);
-  const { address: buyerAddress } = useAccount();
-  const { data: buyerEnsName } = useEnsName({
-    address: buyerAddress,
+export default function LandingPage() {
+  const { address, isConnected } = useAccount();
+  const { data: ensName } = useEnsName({
+    address,
     chainId: mainnet.id,
   });
 
-  // Validate season pass
-  useEffect(() => {
-    if (buyerEnsName && creatorMetadata?.seasonPassDomain) {
-      validateSeasonPass(buyerEnsName, creatorMetadata.seasonPassDomain);
-    }
-  }, [buyerEnsName, creatorMetadata?.seasonPassDomain, validateSeasonPass]);
-
-  // Enhancement 1: Omnichain Autopilot - Auto-open top-up when low balance
-  useEffect(() => {
-    if (refillStatus === 'prompting' && !isTopUpOpen) {
-      setIsTopUpOpen(true);
-    }
-  }, [refillStatus, isTopUpOpen]);
-
-  // Enhancement 2: ENS Dynamic Metadata - Apply creator's sale rate if available
-  useEffect(() => {
-    if (creatorMetadata?.saleRate !== undefined) {
-      setRatePerSecond(creatorMetadata.saleRate);
-    }
-  }, [creatorMetadata?.saleRate, setRatePerSecond]);
-
-  const handleTip = () => {
-    topUp(-1); // Deduct 1 USDC as a tip
-  };
-
   return (
-    <div className="min-h-screen bg-[#050505] p-6">
-      {/* Header */}
-      <header className="mb-6 space-y-4">
-        {/* Top Row: Logo and ENS */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center">
-              <span className="text-black font-bold text-sm">N</span>
-            </div>
-            <h1 className="text-2xl font-bold text-zinc-100">NitroGate DeFi</h1>
-          </div>
+    <div className="min-h-screen bg-[#050505]">
+      {/* Hero Section */}
+      <section className="relative min-h-[90vh] flex items-center justify-center px-6 overflow-hidden">
+        {/* Radial Glow Background */}
+        <div className="absolute inset-0 bg-gradient-radial from-amber-500/10 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute top-20 left-20 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-20 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl" />
 
-          {/* ENS Display */}
-          {buyerEnsName && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900/50 border border-white/5 rounded-lg">
-              <div className="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center">
-                <span className="text-indigo-400 text-xs">👤</span>
-              </div>
-              <span className="text-indigo-400 text-sm font-medium">{buyerEnsName}</span>
-            </div>
+        <div className="relative max-w-5xl mx-auto text-center z-10">
+          {/* ENS Greeting */}
+          {isConnected && ensName && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 inline-block px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full"
+            >
+              <span className="text-indigo-400 text-sm">
+                Welcome back, <span className="font-bold">{ensName}</span> ✨
+              </span>
+            </motion.div>
           )}
-        </div>
 
-        {/* Centered Search Bar */}
-        <div className="flex justify-center">
-          <div className="w-full max-w-2xl">
-            <VideoSearch
-              onVideoSelect={(url, title, type) => {
-                setCurrentVideoUrl(url);
-                setCurrentVideoTitle(title);
-                setCurrentVideoType(type);
-              }}
-            />
+          {/* Main Heading */}
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="text-6xl md:text-7xl font-bold text-white mb-6 leading-tight"
+          >
+            NitroGate:
+            <br />
+            <span className="bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 bg-clip-text text-transparent">
+              Pay-Per-Second Cinema
+            </span>
+          </motion.h1>
+
+          {/* Tagline */}
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-xl md:text-2xl text-zinc-400 mb-12 max-w-3xl mx-auto"
+          >
+            The Netflix of Web3. Stream premium content and pay only for what you watch.
+            <br />
+            <span className="text-amber-400/80">Zero gas fees. Instant payments. True ownership.</span>
+          </motion.p>
+
+          {/* CTA Buttons */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+          >
+            <Link
+              href="/browse"
+              className="group px-8 py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-black rounded-lg font-bold text-lg hover:from-amber-400 hover:to-amber-500 transition-all flex items-center gap-2 shadow-lg shadow-amber-500/20"
+            >
+              <Film className="w-5 h-5" />
+              Browse Movies
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Link>
+
+            <Link
+              href="/studio"
+              className="px-8 py-4 bg-zinc-900/50 border border-white/10 text-white rounded-lg font-bold text-lg hover:bg-zinc-800/50 transition-all flex items-center gap-2"
+            >
+              <Sparkles className="w-5 h-5 text-amber-400" />
+              Start Creating
+            </Link>
+          </motion.div>
+
+          {/* Stats */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="mt-16 grid grid-cols-3 gap-8 max-w-2xl mx-auto"
+          >
+            <div className="text-center">
+              <div className="text-3xl font-bold text-amber-400">$0.0001</div>
+              <div className="text-sm text-zinc-500">Per Second</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-amber-400">0</div>
+              <div className="text-sm text-zinc-500">Gas Fees</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-amber-400">100%</div>
+              <div className="text-sm text-zinc-500">To Creators</div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Problem/Solution Cards */}
+      <section className="py-24 px-6">
+        <div className="max-w-6xl mx-auto">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-4xl font-bold text-center text-white mb-16"
+          >
+            Why NitroGate?
+          </motion.h2>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Card 1: Subscriptions */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="bg-zinc-900/50 border border-white/5 rounded-xl p-8 hover:border-amber-500/30 transition-colors group"
+            >
+              <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-center justify-center mb-6 group-hover:bg-amber-500/20 transition-colors">
+                <Zap className="w-6 h-6 text-amber-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-4">
+                Why wait for subscriptions?
+              </h3>
+              <p className="text-zinc-400 leading-relaxed">
+                Pay per second, not per month. Watch a 2-hour movie for <span className="text-amber-400 font-mono">$0.72</span> instead of a $15 monthly subscription you barely use.
+              </p>
+            </motion.div>
+
+            {/* Card 2: Gas Fees */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+              className="bg-zinc-900/50 border border-white/5 rounded-xl p-8 hover:border-amber-500/30 transition-colors group"
+            >
+              <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-center justify-center mb-6 group-hover:bg-amber-500/20 transition-colors">
+                <Shield className="w-6 h-6 text-amber-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-4">
+                Why pay gas fees?
+              </h3>
+              <p className="text-zinc-400 leading-relaxed">
+                Every payment happens off-chain via <span className="text-amber-400 font-semibold">Yellow Network</span> state channels. Stream for hours with <span className="text-amber-400 font-mono">zero gas fees</span>.
+              </p>
+            </motion.div>
+
+            {/* Card 3: Ownership */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.3 }}
+              className="bg-zinc-900/50 border border-white/5 rounded-xl p-8 hover:border-amber-500/30 transition-colors group"
+            >
+              <div className="w-12 h-12 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-center justify-center mb-6 group-hover:bg-amber-500/20 transition-colors">
+                <Coins className="w-6 h-6 text-amber-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-4">
+                Own your content
+              </h3>
+              <p className="text-zinc-400 leading-relaxed">
+                Creators keep <span className="text-amber-400 font-mono">100%</span> of revenue. Verified identities via <span className="text-indigo-400 font-semibold">ENS</span>. Bridge funds from any chain with <span className="text-purple-400 font-semibold">LI.FI</span>.
+              </p>
+            </motion.div>
           </div>
         </div>
-      </header>
+      </section>
 
-      {/* Main Layout - Full width video */}
-      <div className="space-y-4">
-        {/* Cinema Video Player */}
-        <div className="relative">
-          {/* Radial Glow Behind Video */}
-          <div className="absolute inset-0 bg-gradient-radial from-amber-500/5 via-transparent to-transparent pointer-events-none rounded-xl blur-3xl" />
+      {/* Features Showcase */}
+      <section className="py-24 px-6 bg-zinc-950/50">
+        <div className="max-w-6xl mx-auto">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-4xl font-bold text-center text-white mb-16"
+          >
+            Powered by the Best
+          </motion.h2>
 
-          {/* Video Player Card */}
-          <div className="relative bg-zinc-900/50 border border-white/5 rounded-xl p-4">
-            <VideoPlayer
-              isUnlocked={balance > 0 || hasSeasonPass}
-              isPlaying={isPlaying}
-              watchedSegments={watchedSegments}
-              selectedQuality={selectedQuality}
-              onQualityChange={setSelectedQuality}
-              totalPaid={totalPaid}
-              getTotalWatchedSeconds={getTotalWatchedSeconds}
-              currentVideoTitle={currentVideoTitle || "Video"}
-              onVideoTimeUpdate={(currentTime) => {
-                onVideoTick(currentTime);
-              }}
-              onPlayStateChange={(playing) => {
-                if (playing && !isPlaying) {
-                  startSession();
-                } else if (!playing && isPlaying) {
-                  stopSession();
-                }
-              }}
-            />
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Yellow Network */}
+            <div className="bg-gradient-to-br from-amber-500/10 to-transparent border border-amber-500/20 rounded-xl p-6 text-center">
+              <div className="text-4xl mb-4">🟡</div>
+              <h3 className="text-lg font-bold text-amber-400 mb-2">Yellow Network</h3>
+              <p className="text-sm text-zinc-400">State channels for gasless micropayments</p>
+            </div>
+
+            {/* LI.FI */}
+            <div className="bg-gradient-to-br from-purple-500/10 to-transparent border border-purple-500/20 rounded-xl p-6 text-center">
+              <div className="text-4xl mb-4">⚡</div>
+              <h3 className="text-lg font-bold text-purple-400 mb-2">LI.FI</h3>
+              <p className="text-sm text-zinc-400">Cross-chain bridging for universal liquidity</p>
+            </div>
+
+            {/* ENS */}
+            <div className="bg-gradient-to-br from-indigo-500/10 to-transparent border border-indigo-500/20 rounded-xl p-6 text-center">
+              <div className="text-4xl mb-4">🏷️</div>
+              <h3 className="text-lg font-bold text-indigo-400 mb-2">ENS</h3>
+              <p className="text-sm text-zinc-400">Decentralized identity and trust layer</p>
+            </div>
           </div>
         </div>
+      </section>
 
-        {/* Cinema Controls */}
-        <CinemaControls
-          selectedQuality={selectedQuality}
-          onQualityChange={setSelectedQuality}
-          onTip={handleTip}
-          creatorEns={creatorMetadata?.ensName}
-          ratePerSecond={getEffectiveRate()}
-        />
-
-        {/* Network Matrix */}
-        <NetworkMatrix logs={logs} />
-      </div>
-
-      {/* Floating Vault Dashboard (Collapsible) */}
-      <VaultDashboard
-        balance={balance}
-        onTopUp={() => setIsTopUpOpen(true)}
-      />
-
-      {/* Smart Top-Up Modal (Omnichain Autopilot) */}
-      <SmartTopUp
-        isOpen={isTopUpOpen}
-        onClose={() => {
-          setIsTopUpOpen(false);
-          setRefillStatus('idle');
-        }}
-        onSimulateCredit={(amount) => {
-          topUp(amount);
-          setRefillStatus('credited');
-          setTimeout(() => setRefillStatus('idle'), 800);
-        }}
-      />
+      {/* Final CTA */}
+      <section className="py-24 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-4xl font-bold text-white mb-6"
+          >
+            Ready to experience the future of streaming?
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="text-xl text-zinc-400 mb-12"
+          >
+            Join creators and viewers building the decentralized content economy.
+          </motion.p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+          >
+            <Link
+              href="/browse"
+              className="px-8 py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-black rounded-lg font-bold text-lg hover:from-amber-400 hover:to-amber-500 transition-all shadow-lg shadow-amber-500/20"
+            >
+              Start Watching
+            </Link>
+            <Link
+              href="/studio"
+              className="px-8 py-4 bg-zinc-900/50 border border-white/10 text-white rounded-lg font-bold text-lg hover:bg-zinc-800/50 transition-all"
+            >
+              Become a Creator
+            </Link>
+          </motion.div>
+        </div>
+      </section>
     </div>
   );
 }
