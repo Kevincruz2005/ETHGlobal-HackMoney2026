@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Movie } from "@/types/movie";
-import { Play, Clock, DollarSign } from "lucide-react";
+import { Play, Clock, DollarSign, Zap } from "lucide-react";
 
 interface MovieCardProps {
     movie: Movie;
@@ -82,8 +82,8 @@ export default function MovieCard({ movie }: MovieCardProps) {
 
                     {/* Price */}
                     <div className="flex items-center gap-1 text-amber-400 font-mono font-bold">
-                        <DollarSign className="w-3 h-3" />
-                        {movie.pricePerMinute.toFixed(4)}/min
+                        <Zap className="w-3 h-3 text-purple-400" />
+                        {movie.pricePerMinute.toFixed(6)}/min
                     </div>
                 </div>
             </div>

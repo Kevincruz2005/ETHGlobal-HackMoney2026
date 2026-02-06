@@ -9,7 +9,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "NitroGate - Pay-Per-Second Cinema",
-  description: "The Netflix of Web3 - Pay per second streaming powered by Yellow Network, LI.FI, and ENS.",
+  description: "The Netflix of Web3 - Pay per second streaming powered by Yellow Network, Circle Arc, and ENS.",
 };
 
 export default function RootLayout({

@@ -78,7 +78,7 @@ export default function VaultDashboard({ balance, onTopUp }: VaultDashboardProps
                                     onClick={onTopUp}
                                     className="w-full px-4 py-3 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-lg hover:bg-amber-500/20 transition-all font-medium text-sm"
                                 >
-                                    💰 Top Up (LI.FI)
+                                    💰 Top Up (Circle Arc)
                                 </button>
                                 <div className="grid grid-cols-2 gap-2">
                                     <button className="px-3 py-2 bg-zinc-800/50 border border-white/10 text-zinc-400 rounded-lg hover:bg-zinc-800/70 transition-all text-xs font-medium">

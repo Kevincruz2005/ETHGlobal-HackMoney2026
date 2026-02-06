@@ -58,7 +58,7 @@ export default function FeaturedBanner({ movie }: FeaturedBannerProps) {
                             {formatDuration(movie.duration)}
                         </span>
                         <span className="px-2 py-1 bg-zinc-800/80 rounded text-amber-400 font-mono font-bold">
-                            {movie.pricePerMinute.toFixed(4)} USDC/min
+                            {movie.pricePerMinute.toFixed(6)} USDC/min
                         </span>
                     </div>
 
@@ -80,7 +80,7 @@ export default function FeaturedBanner({ movie }: FeaturedBannerProps) {
                         <div className="px-4 py-3 bg-zinc-900/80 backdrop-blur-sm rounded-lg border border-white/10">
                             <div className="text-xs text-zinc-400">Estimated cost for full movie</div>
                             <div className="text-lg font-mono font-bold text-amber-400">
-                                ${(movie.pricePerMinute * (movie.duration / 60)).toFixed(2)} USDC
+                                ${(movie.pricePerMinute * (movie.duration / 60)).toFixed(6)} USDC
                             </div>
                         </div>
                     </div>

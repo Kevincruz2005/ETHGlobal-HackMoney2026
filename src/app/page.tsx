@@ -176,7 +176,7 @@ export default function LandingPage() {
                 Own your content
               </h3>
               <p className="text-zinc-400 leading-relaxed">
-                Creators keep <span className="text-amber-400 font-mono">100%</span> of revenue. Verified identities via <span className="text-indigo-400 font-semibold">ENS</span>. Bridge funds from any chain with <span className="text-purple-400 font-semibold">LI.FI</span>.
+                Creators keep <span className="text-amber-400 font-mono">100%</span> of revenue. Verified identities via <span className="text-indigo-400 font-semibold">ENS</span>. Bridge funds from any chain with <span className="text-purple-400 font-semibold">Circle Arc</span>.
               </p>
             </motion.div>
           </div>
@@ -203,11 +203,11 @@ export default function LandingPage() {
               <p className="text-sm text-zinc-400">State channels for gasless micropayments</p>
             </div>
 
-            {/* LI.FI */}
+            {/* Circle Arc */}
             <div className="bg-gradient-to-br from-purple-500/10 to-transparent border border-purple-500/20 rounded-xl p-6 text-center">
-              <div className="text-4xl mb-4">⚡</div>
-              <h3 className="text-lg font-bold text-purple-400 mb-2">LI.FI</h3>
-              <p className="text-sm text-zinc-400">Cross-chain bridging for universal liquidity</p>
+              <div className="text-4xl mb-4">🔵</div>
+              <h3 className="text-lg font-bold text-purple-400 mb-2">Circle Arc</h3>
+              <p className="text-sm text-zinc-400">Chain-abstracted USDC for universal liquidity</p>
             </div>
 
             {/* ENS */}

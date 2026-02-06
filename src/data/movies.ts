@@ -1,6 +1,6 @@
 import { Movie } from '@/types/movie';
 
-export const DEMO_CREATOR_ADDRESS = '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1' as const;
+export const DEMO_CREATOR_ADDRESS = '0x4184bb731b3ed0e22eDC425901510A65a4f4aFA2' as const;
 
 export const movies: Movie[] = [
     {
@@ -14,7 +14,7 @@ export const movies: Movie[] = [
         duration: 596, // 9:56
         category: 'Action',
         creatorAddress: DEMO_CREATOR_ADDRESS,
-        pricePerMinute: 0.001,
+        pricePerMinute: 0.00001,
         featured: true,
         rating: 4.8,
         views: 12543
@@ -30,7 +30,7 @@ export const movies: Movie[] = [
         duration: 653, // 10:53
         category: 'Documentary',
         creatorAddress: DEMO_CREATOR_ADDRESS,
-        pricePerMinute: 0.0015,
+        pricePerMinute: 0.00001,
         rating: 4.2,
         views: 8421
     },
@@ -45,7 +45,7 @@ export const movies: Movie[] = [
         duration: 15,
         category: 'Action',
         creatorAddress: DEMO_CREATOR_ADDRESS,
-        pricePerMinute: 0.002,
+        pricePerMinute: 0.00001,
         rating: 4.9,
         views: 23456
     },
@@ -60,7 +60,7 @@ export const movies: Movie[] = [
         duration: 888, // 14:48
         category: 'Action',
         creatorAddress: DEMO_CREATOR_ADDRESS,
-        pricePerMinute: 0.0012,
+        pricePerMinute: 0.00001,
         featured: true,
         rating: 4.7,
         views: 15234
@@ -76,7 +76,7 @@ export const movies: Movie[] = [
         duration: 28,
         category: 'Documentary',
         creatorAddress: DEMO_CREATOR_ADDRESS,
-        pricePerMinute: 0.0008,
+        pricePerMinute: 0.00001,
         rating: 4.1,
         views: 5432
     },
@@ -91,7 +91,7 @@ export const movies: Movie[] = [
         duration: 734, // 12:14
         category: 'New on Base',
         creatorAddress: DEMO_CREATOR_ADDRESS,
-        pricePerMinute: 0.0018,
+        pricePerMinute: 0.00001,
         rating: 4.6,
         views: 9876
     },
@@ -106,7 +106,7 @@ export const movies: Movie[] = [
         duration: 22,
         category: 'Trending',
         creatorAddress: DEMO_CREATOR_ADDRESS,
-        pricePerMinute: 0.0009,
+        pricePerMinute: 0.00001,
         rating: 4.4,
         views: 11234
     },
@@ -121,7 +121,7 @@ export const movies: Movie[] = [
         duration: 20,
         category: 'Trending',
         creatorAddress: DEMO_CREATOR_ADDRESS,
-        pricePerMinute: 0.001,
+        pricePerMinute: 0.00001,
         rating: 4.5,
         views: 18765
     },
@@ -136,7 +136,7 @@ export const movies: Movie[] = [
         duration: 21,
         category: 'Documentary',
         creatorAddress: DEMO_CREATOR_ADDRESS,
-        pricePerMinute: 0.0007,
+        pricePerMinute: 0.00001,
         rating: 4.3,
         views: 6543
     },
@@ -151,7 +151,7 @@ export const movies: Movie[] = [
         duration: 0, // live stream
         category: 'New on Base',
         creatorAddress: DEMO_CREATOR_ADDRESS,
-        pricePerMinute: 0.0025,
+        pricePerMinute: 0.00001,
         featured: true,
         rating: 5.0,
         views: 34567
