@@ -72,8 +72,8 @@ export default function StudioPage() {
                             key={tab}
                             onClick={() => setActiveTab(tab)}
                             className={`px-6 py-3 font-medium capitalize transition-colors relative ${activeTab === tab
-                                ? "text-amber-400"
-                                : "text-zinc-400 hover:text-white"
+                                    ? "text-amber-400"
+                                    : "text-zinc-400 hover:text-white"
                                 }`}
                         >
                             {tab === "upload" && "Upload"}
@@ -102,19 +102,17 @@ export default function StudioPage() {
                                     onChange={handleFileSelect}
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                 />
-
-                                <Upload className="w-12 h-12 text-zinc-500 mx-auto mb-4" />
-                                <p className="text-white font-medium mb-2">Drag video file here</p>
-                                <p className="text-sm text-zinc-400 mb-4">or click to browse</p>
-                                <p className="text-xs text-zinc-500">Supports .mp4, .mov (max 2GB)</p>
+                                <Upload className="w-12 h-12 mx-auto mb-3 text-zinc-600" />
+                                <p className="text-zinc-400 mb-1">Drag and drop or click to upload</p>
+                                <p className="text-sm text-zinc-600">MP4, WebM, or OGG (max 2GB)</p>
                             </div>
 
                             {/* Upload Progress */}
                             {isUploading && (
                                 <div className="mt-6">
-                                    <div className="flex items-center justify-between text-sm mb-2">
-                                        <span className="text-zinc-400">Pinning to IPFS...</span>
-                                        <span className="text-amber-400 font-mono">{uploadProgress}%</span>
+                                    <div className="flex justify-between text-sm text-zinc-400 mb-2">
+                                        <span>Uploading to IPFS...</span>
+                                        <span>{uploadProgress}%</span>
                                     </div>
                                     <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
                                         <div
@@ -124,39 +122,45 @@ export default function StudioPage() {
                                     </div>
                                 </div>
                             )}
+
+                            {uploadProgress === 100 && !isUploading && (
+                                <div className="mt-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                                    <p className="text-sm text-emerald-400">✓ Upload complete! IPFS Hash: Qm...</p>
+                                </div>
+                            )}
                         </div>
 
-                        {/* Metadata Form */}
+                        {/* Video Metadata */}
                         <div className="bg-zinc-900/50 border border-white/5 rounded-xl p-8">
                             <h2 className="text-xl font-bold text-white mb-6">Video Details</h2>
 
-                            <div className="space-y-4">
+                            <form className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-zinc-400 mb-2">Title</label>
                                     <input
                                         type="text"
                                         placeholder="Enter video title"
-                                        className="w-full px-4 py-2 bg-zinc-800/50 border border-white/10 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:border-amber-500/50"
+                                        className="w-full px-4 py-3 bg-zinc-900 border border-white/10 rounded-lg text-white focus:border-purple-500 focus:outline-none"
                                     />
                                 </div>
 
                                 <div>
                                     <label className="block text-sm font-medium text-zinc-400 mb-2">Description</label>
                                     <textarea
-                                        placeholder="Describe your video"
-                                        rows={4}
-                                        className="w-full px-4 py-2 bg-zinc-800/50 border border-white/10 rounded-lg text-white placeholder:text-zinc-600 focus:outline-none focus:border-amber-500/50 resize-none"
+                                        rows={3}
+                                        placeholder="Describe your video..."
+                                        className="w-full px-4 py-3 bg-zinc-900 border border-white/10 rounded-lg text-white focus:border-purple-500 focus:outline-none resize-none"
                                     />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-zinc-400 mb-2">Category</label>
-                                        <select className="w-full px-4 py-2 bg-zinc-800/50 border border-white/10 rounded-lg text-white focus:outline-none focus:border-amber-500/50">
+                                        <select className="w-full px-4 py-3 bg-zinc-900 border border-white/10 rounded-lg text-white focus:border-purple-500 focus:outline-none">
                                             <option>Action</option>
                                             <option>Documentary</option>
-                                            <option>New on Base</option>
-                                            <option>Trending</option>
+                                            <option>Entertainment</option>
+                                            <option>Education</option>
                                         </select>
                                     </div>
 
@@ -177,15 +181,18 @@ export default function StudioPage() {
                                         <input
                                             type="file"
                                             accept="image/*"
-                                            className="w-full px-4 py-2 bg-zinc-800/50 border border-white/10 rounded-lg text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-amber-500/20 file:text-amber-400 file:cursor-pointer hover:file:bg-amber-500/30"
+                                            className="w-full px-4 py-2.5 bg-zinc-900 border border-white/10 rounded-lg text-zinc-400 focus:border-purple-500 focus:outline-none"
                                         />
                                     </div>
-
-                                    <button className="w-full px-6 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-black rounded-lg font-bold hover:from-amber-400 hover:to-amber-500 transition-all shadow-lg shadow-amber-500/20">
-                                        Publish to NitroGate
-                                    </button>
                                 </div>
-                            </div>
+
+                                <button
+                                    type="submit"
+                                    className="w-full px-6 py-4 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg font-bold hover:from-purple-400 hover:to-indigo-500 transition-all shadow-lg shadow-purple-500/20"
+                                >
+                                    Publish to NitroGate
+                                </button>
+                            </form>
                         </div>
                     </div>
                 )}
@@ -264,56 +271,74 @@ export default function StudioPage() {
                                 </table>
                             </div>
                         </div>
-                                            ${stats.monthlyEarned.toFixed(2)}
-                                        </div>
-                                        <div className="text-sm text-zinc-400">USDC on Base Sepolia</div>
-                                    </div>
-
-            <button className="w-full px-6 py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-black rounded-lg font-bold hover:from-amber-400 hover:to-amber-500 transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2">
-                <Download className="w-5 h-5" />
-                Claim Earnings
-            </button>
-
-            <div className="mt-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                <div className="flex items-center gap-2 text-sm text-amber-400">
-                    <span className="text-xl">🟡</span>
-                    <div>
-                        <div className="font-bold">Yellow Network Settlement</div>
-                        <div className="text-xs text-zinc-400">Last settled 4 days ago</div>
                     </div>
-                </div>
+                )}
+
+                {activeTab === "settlements" && (
+                    <div className="grid lg:grid-cols-2 gap-6">
+                        {/* Available to Claim */}
+                        <div className="bg-zinc-900/50 border border-white/5 rounded-xl p-8">
+                            <h2 className="text-xl font-bold text-white mb-6">Available to Claim</h2>
+                            <div className="text-center mb-8">
+                                <div className="text-4xl font-bold text-amber-400 mb-2">
+                                    ${stats.monthlyEarned.toFixed(2)}
+                                </div>
+                                <div className="text-sm text-zinc-400">USDC on Base Sepolia</div>
+                            </div>
+
+                            <button className="w-full px-6 py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-black rounded-lg font-bold hover:from-amber-400 hover:to-amber-500 transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2">
+                                <Download className="w-5 h-5" />
+                                Claim Earnings
+                            </button>
+
+                            <div className="mt-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                                <div className="flex items-center gap-2 text-sm text-amber-400">
+                                    <span className="text-xl">🟡</span>
+                                    <div>
+                                        <strong>Yellow Network Settlement</strong>
+                                        <br />
+                                        Earnings are settled weekly to Base Sepolia via state channel closure.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Settlement History */}
+                        <div className="bg-zinc-900/50 border border-white/5 rounded-xl p-8">
+                            <h2 className="text-xl font-bold text-white mb-6">Settlement History</h2>
+
+                            <div className="space-y-4">
+                                {settlements.map((settlement) => (
+                                    <div
+                                        key={settlement.id}
+                                        className="flex items-center justify-between p-4 bg-zinc-800/30 rounded-lg border border-white/5"
+                                    >
+                                        <div>
+                                            <div className="text-white font-medium mb-1">${settlement.amount.toFixed(2)} USDC</div>
+                                            <div className="text-xs text-zinc-500">{settlement.date}</div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="text-xs text-zinc-500 mb-1">TX Hash</div>
+                                            <a
+                                                href={`https://sepolia.basescan.org/tx/${settlement.txHash}123456`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-xs text-purple-400 hover:text-purple-300 font-mono"
+                                            >
+                                                {settlement.txHash}
+                                            </a>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <button className="w-full mt-6 px-6 py-3 bg-zinc-800 border border-white/10 text-white rounded-lg font-medium hover:bg-zinc-700 transition-colors">
+                                Export History
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
-
-                                {/* Settlement History */ }
-    <div className="bg-zinc-900/50 border border-white/5 rounded-xl p-8">
-        <h2 className="text-xl font-bold text-white mb-6">Settlement History</h2>
-
-        <div className="space-y-4">
-            {settlements.map((settlement) => (
-                <div key={settlement.id} className="p-4 bg-zinc-800/30 rounded-lg border border-white/5">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-white font-medium">{settlement.date}</span>
-                        <span className="text-emerald-400 font-mono font-bold">+${settlement.amount.toFixed(2)}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-zinc-500">
-                        <span>TX:</span>
-                        <span className="font-mono">{settlement.txHash}</span>
-                        <button className="text-indigo-400 hover:text-indigo-300">View ↗</button>
-                    </div>
-                </div>
-            ))}
-        </div>
-
-        <button className="w-full mt-6 px-4 py-2 bg-zinc-800/50 border border-white/10 text-zinc-400 rounded-lg hover:text-white hover:border-white/20 transition-colors text-sm">
-            Export History
-        </button>
-    </div>
-                            </div >
-                        )
-}
-                    </div >
-            </div >
-        </div >
     );
 }

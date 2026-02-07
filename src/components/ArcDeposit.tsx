@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowDownToLine, Zap, CheckCircle2, Loader2 } from "lucide-react";
+import { ArrowDownToLine, Zap, CheckCircle2, Loader2, ExternalLink, AlertCircle } from "lucide-react";
+import { useTeleport } from "@/hooks/useTeleport";
 
 interface ArcDepositProps {
     externalBalance: number;
@@ -11,11 +12,39 @@ interface ArcDepositProps {
     onClose: () => void;
 }
 
-type DepositStep = 'idle' | 'signing' | 'burning' | 'minting' | 'complete';
+type DepositStep = 'idle' | 'approving' | 'burning' | 'attesting' | 'complete';
 
 export default function ArcDeposit({ externalBalance, onDeposit, isOpen, onClose }: ArcDepositProps) {
     const [amount, setAmount] = useState("");
-    const [step, setStep] = useState<DepositStep>('idle');
+    const [localStep, setLocalStep] = useState<DepositStep>('idle');
+
+    const { teleport, isApproving, isBurning, error, txHash } = useTeleport();
+
+    // Sync hook states to local step
+    useEffect(() => {
+        if (isApproving) {
+            setLocalStep('approving');
+        } else if (isBurning) {
+            setLocalStep('burning');
+        } else if (txHash && !error) {
+            setLocalStep('attesting');
+            // Show complete after brief delay
+            setTimeout(() => {
+                setLocalStep('complete');
+                const depositAmount = parseFloat(amount);
+                onDeposit(depositAmount);
+
+                // Reset after showing success
+                setTimeout(() => {
+                    setAmount("");
+                    setLocalStep('idle');
+                    onClose();
+                }, 1500);
+            }, 1000);
+        } else if (!isApproving && !isBurning && !txHash) {
+            setLocalStep('idle');
+        }
+    }, [isApproving, isBurning, txHash, error]);
 
     const handleDeposit = async () => {
         const depositAmount = parseFloat(amount);
@@ -23,37 +52,25 @@ export default function ArcDeposit({ externalBalance, onDeposit, isOpen, onClose
             return;
         }
 
-        // Step 1: Signing (0.5s)
-        setStep('signing');
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Step 2: Burning (1.0s)
-        setStep('burning');
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Step 3: Minting (1.0s) - Optimistic update
-        setStep('minting');
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Complete
-        setStep('complete');
-        onDeposit(depositAmount);
-
-        // Reset after showing success
-        await new Promise(resolve => setTimeout(resolve, 800));
-        setAmount("");
-        setStep('idle');
-        onClose();
+        try {
+            // Call the real CCTP hook
+            // Note: We're bridging to Ethereum Sepolia since Arc domain isn't supported yet
+            // For demo, we treat this as "Arc" in the UI
+            const recipientAddress = '0x995D174C8b0c4F70817EaA59aDb8A3e20fAF659c' as `0x${string}`;
+            await teleport(amount, recipientAddress);
+        } catch (err) {
+            console.error('[ArcDeposit] Error:', err);
+        }
     };
 
     const getStepInfo = () => {
-        switch (step) {
-            case 'signing':
-                return { text: 'Signing Transfer...', progress: 33 };
+        switch (localStep) {
+            case 'approving':
+                return { text: 'Approving USDC...', progress: 25 };
             case 'burning':
-                return { text: 'Burning USDC on Base...', progress: 66 };
-            case 'minting':
-                return { text: 'Minting on Arc...', progress: 100 };
+                return { text: 'Burning USDC on Base...', progress: 60 };
+            case 'attesting':
+                return { text: 'Waiting for attestation...', progress: 90 };
             case 'complete':
                 return { text: 'Teleport Complete! ✨', progress: 100 };
             default:
@@ -62,7 +79,7 @@ export default function ArcDeposit({ externalBalance, onDeposit, isOpen, onClose
     };
 
     const stepInfo = getStepInfo();
-    const isProcessing = step !== 'idle' && step !== 'complete';
+    const isProcessing = localStep !== 'idle' && localStep !== 'complete';
 
     return (
         <AnimatePresence>
@@ -92,8 +109,8 @@ export default function ArcDeposit({ externalBalance, onDeposit, isOpen, onClose
                                         <ArrowDownToLine className="w-5 h-5 text-amber-400" />
                                     </div>
                                     <div>
-                                        <h2 className="text-xl font-bold text-white">Teleport to Arc</h2>
-                                        <p className="text-xs text-zinc-500">Instant cross-chain deposit</p>
+                                        <h2 className="text-xl font-bold text-white">Bridge to Arc</h2>
+                                        <p className="text-xs text-zinc-500">Cross-chain USDC via CCTP</p>
                                     </div>
                                 </div>
                             </div>
@@ -148,7 +165,7 @@ export default function ArcDeposit({ externalBalance, onDeposit, isOpen, onClose
 
                                         {/* Step Text */}
                                         <div className="flex items-center gap-2 text-sm">
-                                            {step === 'complete' ? (
+                                            {localStep === 'complete' ? (
                                                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                                             ) : (
                                                 <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
@@ -159,14 +176,47 @@ export default function ArcDeposit({ externalBalance, onDeposit, isOpen, onClose
                                 )}
                             </AnimatePresence>
 
+                            {/* Error Display */}
+                            {error && (
+                                <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+                                    <div className="flex items-start gap-2 text-sm text-red-400">
+                                        <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                                        <div>
+                                            <div className="font-bold mb-1">Transaction Failed</div>
+                                            <div className="text-red-400/80">{error}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Success with TX Link */}
+                            {txHash && !error && (
+                                <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                                    <div className="flex items-start gap-2 text-sm text-emerald-400">
+                                        <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                                        <div className="flex-1">
+                                            <div className="font-bold mb-1">Burn Complete!</div>
+                                            <a
+                                                href={`https://sepolia.basescan.org/tx/${txHash}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-xs text-amber-400 hover:text-amber-300 font-mono break-all flex items-center gap-1"
+                                            >
+                                                View on BaseScan <ExternalLink className="w-3 h-3" />
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Info Box */}
                             <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                                 <div className="flex items-start gap-2 text-xs text-amber-300">
                                     <Zap className="w-4 h-4 flex-shrink-0 mt-0.5" />
                                     <div>
-                                        <div className="font-bold mb-1">Circle Gateway Magic</div>
+                                        <div className="font-bold mb-1">Circle CCTP Bridge</div>
                                         <div className="text-amber-400/80">
-                                            Burn USDC on Base → Mint on Arc. Zero gas fees. Instant settlement.
+                                            Burns USDC on Base Sepolia. Attestation for minting takes 10-20 minutes.
                                         </div>
                                     </div>
                                 </div>
@@ -186,7 +236,7 @@ export default function ArcDeposit({ externalBalance, onDeposit, isOpen, onClose
                                     disabled={!amount || isProcessing || parseFloat(amount) > externalBalance}
                                     className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-black rounded-lg font-bold hover:from-amber-400 hover:to-amber-500 transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {isProcessing ? 'Teleporting...' : 'Teleport Now'}
+                                    {isProcessing ? 'Processing...' : 'Bridge Now'}
                                 </button>
                             </div>
                         </div>

@@ -3,21 +3,13 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Wallet, Zap, TrendingUp, ArrowUpRight, Activity, Shield } from "lucide-react";
-import { useAccount, useEnsName, useEnsAvatar } from "wagmi";
-import { mainnet } from "wagmi/chains";
+import { useAccount } from "wagmi";
+import WalletProfile from "@/components/WalletProfile";
 import ArcDeposit from "@/components/ArcDeposit";
 
 export default function WalletPage() {
     // Real wallet connection
     const { address, isConnected } = useAccount();
-    const { data: ensName } = useEnsName({
-        address,
-        chainId: mainnet.id,
-    });
-    const { data: ensAvatar } = useEnsAvatar({
-        name: ensName || undefined,
-        chainId: mainnet.id,
-    });
 
     // Balances (persistent in localStorage for demo)
     const [externalBalance, setExternalBalance] = useState(0);
@@ -111,46 +103,8 @@ export default function WalletPage() {
                     <p className="text-zinc-400">Chain-abstracted balance powered by Circle Gateway</p>
                 </div>
 
-                {/* ENS Identity Card */}
-                <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mb-8 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 rounded-xl p-6 backdrop-blur-md"
-                >
-                    <div className="flex items-center gap-4">
-                        {/* Avatar */}
-                        <div className="w-16 h-16 rounded-full bg-indigo-500/20 border-2 border-indigo-500/40 overflow-hidden flex items-center justify-center">
-                            {ensAvatar ? (
-                                <img src={ensAvatar} alt={ensName || address} className="w-full h-full object-cover" />
-                            ) : (
-                                <span className="text-indigo-400 text-2xl">👤</span>
-                            )}
-                        </div>
-
-                        {/* Identity Info */}
-                        <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                                <h2 className="text-2xl font-bold text-white">
-                                    {ensName || `${address.slice(0, 6)}...${address.slice(-4)}`}
-                                </h2>
-                                {ensName && (
-                                    <div className="px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/40 rounded text-xs font-bold text-emerald-400">
-                                        VERIFIED
-                                    </div>
-                                )}
-                            </div>
-                            <div className="text-sm text-zinc-500 font-mono">
-                                {address.slice(0, 6)}...{address.slice(-4)}
-                            </div>
-                        </div>
-
-                        {/* ENS Badge */}
-                        <div className="px-4 py-2 bg-indigo-500/20 border border-indigo-500/30 rounded-lg">
-                            <div className="text-xs text-zinc-400 mb-1">Identity by</div>
-                            <div className="text-lg font-bold text-indigo-400">ENS</div>
-                        </div>
-                    </div>
-                </motion.div>
+                {/* Wallet Profile with Base Sepolia ENS */}
+                <WalletProfile />
 
                 <div className="grid lg:grid-cols-2 gap-6">
                     {/* Left: Universal Arc Balance */}
