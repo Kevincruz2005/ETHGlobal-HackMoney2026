@@ -1,30 +1,115 @@
 "use client";
 
-import { useState } from "react";
-import { Upload, DollarSign, Eye, Clock, TrendingUp, Download } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Upload, DollarSign, TrendingUp, Video, CheckCircle, Loader2 } from "lucide-react";
+import { usePinataUpload } from "@/hooks/usePinataUpload";
+import { useVideoRegistry } from "@/hooks/useVideoRegistry";
+import { useAccount } from "wagmi";
 
 export default function StudioPage() {
     const [activeTab, setActiveTab] = useState<"upload" | "revenue" | "settlements">("upload");
     const [uploadProgress, setUploadProgress] = useState(0);
     const [isUploading, setIsUploading] = useState(false);
+    const [videoTitle, setVideoTitle] = useState("");
+    const [videoDescription, setVideoDescription] = useState("");
+    const [videoPrice, setVideoPrice] = useState("0.00001");
+    const [uploadedVideos, setUploadedVideos] = useState<any[]>([]);
+    const [videoCategory, setVideoCategory] = useState("Entertainment");
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Wallet connection
+    const { address, isConnected } = useAccount();
+
+    // Pinata upload hook
+    const { uploadVideo, progress, isUploading: isPinataUploading, error, result } = usePinataUpload();
+
+    // VideoRegistry blockchain hook
+    const { publishVideo, isPublishing, isSuccess: isPublishSuccess } = useVideoRegistry();
+
+    // Load uploaded videos from localStorage
+    useEffect(() => {
+        const saved = localStorage.getItem('nitrogate_uploaded_videos');
+        if (saved) {
+            try {
+                setUploadedVideos(JSON.parse(saved));
+            } catch (e) {
+                console.error('Failed to load uploaded videos', e);
+            }
+        }
+    }, []);
+
+    // Handle file selection
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (file) {
-            // Simulate upload
-            setIsUploading(true);
-            setUploadProgress(0);
+        if (!file) return;
 
-            const interval = setInterval(() => {
-                setUploadProgress((prev) => {
-                    if (prev >= 100) {
-                        clearInterval(interval);
-                        setIsUploading(false);
-                        return 100;
-                    }
-                    return prev + 10;
-                });
-            }, 300);
+        // Validate title
+        if (!videoTitle.trim()) {
+            alert('Please enter a video title first');
+            return;
+        }
+
+        // Check wallet connection
+        if (!isConnected || !address) {
+            alert('⚠️ Please connect your wallet first to publish on-chain!');
+            return;
+        }
+
+        try {
+            // Upload to Pinata IPFS
+            const uploadResult = await uploadVideo(file, {
+                name: videoTitle,
+                description: videoDescription,
+                price: videoPrice,
+            });
+
+            if (uploadResult) {
+                console.log('Video uploaded to IPFS:', uploadResult);
+
+                // Publish to blockchain
+                console.log('Publishing to blockchain...');
+                await publishVideo(
+                    uploadResult.ipfsHash,
+                    videoTitle,
+                    videoDescription,
+                    videoCategory,
+                    videoPrice
+                );
+
+                console.log('Video published to blockchain!');
+
+                // Auto-publish to browse page (backwards compatibility with localStorage)
+                const publishedVideo = {
+                    ...uploadResult,
+                    title: videoTitle,
+                    description: videoDescription,
+                    price: videoPrice,
+                    category: videoCategory,
+                    published: true,
+                    uploadedAt: new Date().toISOString(),
+                    onChain: true, // Mark as on-chain
+                };
+
+                // Save to uploaded videos (avoid duplicates)
+                const currentUploaded = [...uploadedVideos];
+                const existingIndex = currentUploaded.findIndex(v => v.ipfsHash === uploadResult.ipfsHash);
+                if (existingIndex >= 0) {
+                    currentUploaded[existingIndex] = publishedVideo;
+                } else {
+                    currentUploaded.unshift(publishedVideo);
+                }
+                setUploadedVideos(currentUploaded);
+                localStorage.setItem('nitrogate_uploaded_videos', JSON.stringify(currentUploaded));
+
+                alert('✅ Video uploaded to IPFS and published on-chain! Your videos now follow your wallet everywhere! 🎉');
+
+                // Reset form
+                setVideoTitle('');
+                setVideoDescription('');
+                setVideoPrice('0.00001');
+            }
+        } catch (error: any) {
+            console.error('Upload/publish error:', error);
+            alert(`❌ Error: ${error.message || 'Failed to upload/publish video'}`);
         }
     };
 
@@ -71,10 +156,10 @@ export default function StudioPage() {
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
-                            className={`px-6 py-3 font-medium capitalize transition-colors relative ${activeTab === tab
-                                    ? "text-amber-400"
-                                    : "text-zinc-400 hover:text-white"
-                                }`}
+                            className={`px - 6 py - 3 font - medium capitalize transition - colors relative ${activeTab === tab
+                                ? "text-amber-400"
+                                : "text-zinc-400 hover:text-white"
+                                } `}
                         >
                             {tab === "upload" && "Upload"}
                             {tab === "revenue" && "Revenue Dashboard"}
@@ -108,24 +193,25 @@ export default function StudioPage() {
                             </div>
 
                             {/* Upload Progress */}
-                            {isUploading && (
+                            {isPinataUploading && (
                                 <div className="mt-6">
                                     <div className="flex justify-between text-sm text-zinc-400 mb-2">
                                         <span>Uploading to IPFS...</span>
-                                        <span>{uploadProgress}%</span>
+                                        <span>{progress}%</span>
                                     </div>
                                     <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
                                         <div
                                             className="h-full bg-gradient-to-r from-amber-500 to-amber-600 transition-all duration-300"
-                                            style={{ width: `${uploadProgress}%` }}
+                                            style={{ width: `${progress}%` }}
                                         />
                                     </div>
                                 </div>
                             )}
 
-                            {uploadProgress === 100 && !isUploading && (
+                            {result && !isPinataUploading && (
                                 <div className="mt-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                                    <p className="text-sm text-emerald-400">✓ Upload complete! IPFS Hash: Qm...</p>
+                                    <p className="text-sm text-emerald-400 mb-2">✓ Upload complete!</p>
+                                    <p className="text-xs text-zinc-400 font-mono break-all">IPFS: {result.ipfsHash}</p>
                                 </div>
                             )}
                         </div>
@@ -136,11 +222,14 @@ export default function StudioPage() {
 
                             <form className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-zinc-400 mb-2">Title</label>
+                                    <label className="block text-sm font-medium text-zinc-400 mb-2">Title *</label>
                                     <input
                                         type="text"
+                                        value={videoTitle}
+                                        onChange={(e) => setVideoTitle(e.target.value)}
                                         placeholder="Enter video title"
                                         className="w-full px-4 py-3 bg-zinc-900 border border-white/10 rounded-lg text-white focus:border-purple-500 focus:outline-none"
+                                        required
                                     />
                                 </div>
 
@@ -148,6 +237,8 @@ export default function StudioPage() {
                                     <label className="block text-sm font-medium text-zinc-400 mb-2">Description</label>
                                     <textarea
                                         rows={3}
+                                        value={videoDescription}
+                                        onChange={(e) => setVideoDescription(e.target.value)}
                                         placeholder="Describe your video..."
                                         className="w-full px-4 py-3 bg-zinc-900 border border-white/10 rounded-lg text-white focus:border-purple-500 focus:outline-none resize-none"
                                     />
@@ -156,7 +247,11 @@ export default function StudioPage() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-zinc-400 mb-2">Category</label>
-                                        <select className="w-full px-4 py-3 bg-zinc-900 border border-white/10 rounded-lg text-white focus:border-purple-500 focus:outline-none">
+                                        <select
+                                            value={videoCategory}
+                                            onChange={(e) => setVideoCategory(e.target.value)}
+                                            className="w-full px-4 py-3 bg-zinc-900 border border-white/10 rounded-lg text-white focus:border-purple-500 focus:outline-none"
+                                        >
                                             <option>Action</option>
                                             <option>Documentary</option>
                                             <option>Entertainment</option>
@@ -168,7 +263,8 @@ export default function StudioPage() {
                                         <label className="block text-sm font-medium text-zinc-400 mb-2">Price (USDC/min)</label>
                                         <input
                                             type="number"
-                                            name="pricePerMinute"
+                                            value={videoPrice}
+                                            onChange={(e) => setVideoPrice(e.target.value)}
                                             step="0.00001"
                                             placeholder="0.00001"
                                             className="w-full px-4 py-3 bg-zinc-900 border border-white/10 rounded-lg text-white focus:border-purple-500 focus:outline-none"
@@ -236,7 +332,7 @@ export default function StudioPage() {
                                         <div className="text-xs text-amber-400 font-mono">${item.amount.toFixed(1)}</div>
                                         <div
                                             className="w-full bg-gradient-to-t from-amber-500 to-amber-600 rounded-t"
-                                            style={{ height: `${(item.amount / 10) * 100}%` }}
+                                            style={{ height: `${(item.amount / 10) * 100}% ` }}
                                         />
                                         <span className="text-xs text-zinc-500">{item.date}</span>
                                     </div>
@@ -326,19 +422,19 @@ export default function StudioPage() {
                                                 className="text-xs text-purple-400 hover:text-purple-300 font-mono"
                                             >
                                                 {settlement.txHash}
-                                            </a>
-                                        </div>
-                                    </div>
+                                            </a >
+                                        </div >
+                                    </div >
                                 ))}
-                            </div>
+                            </div >
 
                             <button className="w-full mt-6 px-6 py-3 bg-zinc-800 border border-white/10 text-white rounded-lg font-medium hover:bg-zinc-700 transition-colors">
                                 Export History
                             </button>
-                        </div>
-                    </div>
+                        </div >
+                    </div >
                 )}
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }

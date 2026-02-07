@@ -1,14 +1,98 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Search, X } from "lucide-react";
 import FeaturedBanner from "@/components/FeaturedBanner";
 import CategoryRow from "@/components/CategoryRow";
 import { movies, getFeaturedMovies, getMoviesByCategory, searchMovies } from "@/data/movies";
+import { Movie } from "@/types/movie";
+import { useCreatorVideos } from "@/hooks/useVideoRegistry";
+import { useAccount } from "wagmi";
+import { formatEther } from "viem";
 
 export default function BrowsePage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<string>("All");
+    const [publishedIPFSVideos, setPublishedIPFSVideos] = useState<any[]>([]);
+
+    // Wallet connection
+    const { address, isConnected } = useAccount();
+
+    // Load videos from blockchain for connected wallet
+    const { videos: onChainVideos, isLoading: isLoadingChain, refetch } = useCreatorVideos(address);
+
+    // Load published IPFS videos from blockchain OR localStorage
+    useEffect(() => {
+        const loadVideos = () => {
+            // Priority 1: Load from blockchain if wallet connected
+            if (isConnected && onChainVideos && onChainVideos.length > 0) {
+                console.log('📡 Loading videos from blockchain for:', address);
+                const formattedVideos = onChainVideos.map((v) => ({
+                    id: `ipfs-${v.ipfsHash}`,
+                    slug: v.ipfsHash,
+                    title: v.title,
+                    thumbnail: '/placeholder-video.svg',
+                    videoUrl: `https://gateway.pinata.cloud/ipfs/${v.ipfsHash}`,
+                    pricePerMinute: parseFloat(formatEther(v.price)),
+                    description: v.description,
+                    category: v.category,
+                    creator: 'Your Upload (On-Chain)',
+                    duration: 120,
+                    views: 0,
+                    rating: 0,
+                }));
+                setPublishedIPFSVideos(formattedVideos);
+                console.log(`✅ Loaded ${formattedVideos.length} video(s) from blockchain`);
+                return;
+            }
+
+            // Priority 2: Fallback to localStorage if no blockchain videos
+            try {
+                const saved = localStorage.getItem('nitrogate_published_videos');
+                if (saved) {
+                    const videos = JSON.parse(saved);
+
+                    // Remove duplicates based on IPFS hash
+                    const uniqueVideos = [];
+                    const seenHashes = new Set();
+
+                    for (const v of videos) {
+                        if (!seenHashes.has(v.ipfsHash)) {
+                            seenHashes.add(v.ipfsHash);
+                            uniqueVideos.push(v);
+                        }
+                    }
+
+                    // If we removed duplicates, update localStorage
+                    if (uniqueVideos.length < videos.length) {
+                        console.log(`🧹 Cleaned ${videos.length - uniqueVideos.length} duplicate(s) from published videos`);
+                        localStorage.setItem('nitrogate_published_videos', JSON.stringify(uniqueVideos));
+                    }
+
+                    const formattedVideos = uniqueVideos.map((v: any) => ({
+                        id: `ipfs-${v.ipfsHash}`,
+                        slug: v.ipfsHash, // Use IPFS hash as slug
+                        title: v.title || v.name,
+                        thumbnail: '/placeholder-video.svg', // Use placeholder since video can't be thumbnail
+                        videoUrl: `https://gateway.pinata.cloud/ipfs/${v.ipfsHash}`,
+                        pricePerMinute: parseFloat(v.price) || 0.00001,
+                        description: v.description || 'No description',
+                        category: v.category || 'Entertainment',
+                        creator: 'Your Upload (LocalStorage)',
+                        duration: 120,
+                        views: 0,
+                        rating: 0,
+                    }));
+                    setPublishedIPFSVideos(formattedVideos);
+                    console.log(`✅ Loaded ${formattedVideos.length} video(s) from localStorage`);
+                }
+            } catch (error) {
+                console.error('Error loading published videos:', error);
+            }
+        };
+
+        loadVideos();
+    }, [isConnected, address, onChainVideos]);
 
     const featuredMovie = getFeaturedMovies()[0];
 
@@ -32,7 +116,26 @@ export default function BrowsePage() {
     // Get movies by category for rows
     const actionMovies = getMoviesByCategory("Action");
     const documentaries = getMoviesByCategory("Documentary");
-    const newOnBase = getMoviesByCategory("New on Base");
+    // Combine IPFS videos with hardcoded movies (deduplicate by ID)
+    const newOnBase = useMemo(() => {
+        if (publishedIPFSVideos.length === 0) {
+            return getMoviesByCategory("New on Base");
+        }
+
+        const combined = [...publishedIPFSVideos, ...getMoviesByCategory("New on Base")];
+        const unique = [];
+        const seenIds = new Set();
+
+        for (const movie of combined) {
+            if (!seenIds.has(movie.id)) {
+                seenIds.add(movie.id);
+                unique.push(movie);
+            }
+        }
+
+        return unique;
+    }, [publishedIPFSVideos]);
+
     const trending = getMoviesByCategory("Trending");
 
     const categories = ["All", "Action", "Documentary", "New on Base", "Trending"];
@@ -70,8 +173,8 @@ export default function BrowsePage() {
                                     key={category}
                                     onClick={() => setSelectedCategory(category)}
                                     className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors ${selectedCategory === category
-                                            ? "bg-amber-500/20 border border-amber-500/40 text-amber-400"
-                                            : "bg-zinc-900/50 border border-white/10 text-zinc-400 hover:text-white hover:border-white/20"
+                                        ? "bg-amber-500/20 border border-amber-500/40 text-amber-400"
+                                        : "bg-zinc-900/50 border border-white/10 text-zinc-400 hover:text-white hover:border-white/20"
                                         }`}
                                 >
                                     {category}

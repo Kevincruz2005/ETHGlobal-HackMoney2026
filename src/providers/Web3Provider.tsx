@@ -34,6 +34,17 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
                     return;
                 }
 
+                // Filter out Cross-Origin-Opener-Policy checks (harmless 404 from wallet checks)
+                if (message.includes('Cross-Origin-Opener-Policy') || message.includes('checkCrossOriginOpenerPolicy')) {
+                    return; // Suppress COOP checks - these are expected and harmless
+                }
+
+                // Filter out duplicate key warnings from IPFS videos (until localStorage is cleaned)
+                if (message.includes('Encountered two children with the same key') && message.includes('ipfs-')) {
+                    console.warn('⚠️  Duplicate IPFS video detected. Run cleanup script in console to fix.');
+                    return;
+                }
+
                 // Filter out empty video error objects
                 if (message.includes('Video error details:') && args[1] && typeof args[1] === 'object') {
                     const errorObj = args[1];

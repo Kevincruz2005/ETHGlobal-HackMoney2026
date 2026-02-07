@@ -23,12 +23,17 @@ interface LogEntry {
 
 export default function WatchPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = use(params);
-    const movie = getMovieBySlug(slug);
+
+    // First try to get from hardcoded movies
+    let movie = getMovieBySlug(slug);
+
+    // If not found, check if it's an IPFS video
+    const [ipfsMovie, setIpfsMovie] = useState<any>(null);
+    const [isLoadingIPFS, setIsLoadingIPFS] = useState(!movie); // Only load if movie not found
+
+    // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
     const { address, isConnected } = useAccount();
     const { data: walletClient } = useWalletClient();
-
-    // Use connected wallet address as streamer, or fallback to demo address
-    const STREAMER_ADDRESS = address || "0x4184bb731b3ed0e22eDC425901510A65a4f4aFA2";
 
     // Yellow Network state
     const yellowClient = useRef(getYellowClient());
@@ -46,16 +51,119 @@ export default function WatchPage({ params }: { params: Promise<{ slug: string }
     const [currentTime, setCurrentTime] = useState(0);
     const paymentIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-    if (!movie) {
-        notFound();
-    }
+    useEffect(() => {
+        if (!movie) {
+            setIsLoadingIPFS(true);
+            // Check localStorage for IPFS videos
+            const saved = localStorage.getItem('nitrogate_published_videos');
+            if (saved) {
+                try {
+                    const videos = JSON.parse(saved);
+                    const ipfsVideo = videos.find((v: any) => v.ipfsHash === slug);
+                    if (ipfsVideo) {
+                        // Format IPFS video to match Movie type
+                        setIpfsMovie({
+                            id: `ipfs-${ipfsVideo.ipfsHash}`,
+                            slug: ipfsVideo.ipfsHash,
+                            title: ipfsVideo.title || ipfsVideo.name,
+                            thumbnail: '/placeholder-video.svg',
+                            videoUrl: `https://gateway.pinata.cloud/ipfs/${ipfsVideo.ipfsHash}`,
+                            pricePerMinute: parseFloat(ipfsVideo.price) || 0.00001,
+                            description: ipfsVideo.description || 'No description',
+                            category: ipfsVideo.category || 'Entertainment',
+                            creator: 'Your Upload',
+                            creatorAddress: '0x0000000000000000000000000000000000000000',
+                            duration: 120,
+                            views: 0,
+                            rating: 0,
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error loading IPFS video:', error);
+                }
+            }
+            setIsLoadingIPFS(false);
+        }
+    }, [slug, movie]);
 
-    const creatorMetadata = useNitroCreatorMetadata(movie.creatorAddress);
+    // Use either hardcoded movie or IPFS movie
+    const finalMovie = movie || ipfsMovie;
 
-    // Auto-scroll logs
+    // Use connected wallet address as streamer, or fallback to demo address
+    const STREAMER_ADDRESS = address || "0x4184bb731b3ed0e22eDC425901510A65a4f4aFA2";
+
+    // Call creator metadata hook (must be called unconditionally)
+    const creatorMetadata = useNitroCreatorMetadata(finalMovie?.creatorAddress || '0x0000000000000000000000000000000000000000');
+
+    // Auto-scroll logs (must be called before any returns)
     useEffect(() => {
         logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [logs]);
+
+    // Send payment every second while playing (must be called before any returns)
+    useEffect(() => {
+        if (!isPlaying || !sessionActive || !finalMovie) {
+            if (paymentIntervalRef.current) {
+                clearInterval(paymentIntervalRef.current);
+                paymentIntervalRef.current = null;
+            }
+            return;
+        }
+
+        // Payment rate: $0.0001 per second
+        const ratePerSecond = finalMovie.pricePerMinute / 60;
+
+        addLog('info', 'Starting micropayments...', {
+            rate: `$${ratePerSecond.toFixed(6)}/second`
+        });
+
+        paymentIntervalRef.current = setInterval(async () => {
+            try {
+                const result = await yellowClient.current.sendPayment(
+                    ratePerSecond.toString(),
+                    STREAMER_ADDRESS
+                );
+
+                setTotalPaid(prev => prev + ratePerSecond);
+                setSessionBalance(prev => Math.max(0, prev - ratePerSecond));
+
+                addLog('success', `Payment sent: $${ratePerSecond.toFixed(6)}`, result);
+
+            } catch (error: any) {
+                addLog('error', 'Payment failed', error.message);
+            }
+        }, 1000); // Every 1 second
+
+        return () => {
+            if (paymentIntervalRef.current) {
+                clearInterval(paymentIntervalRef.current);
+            }
+        };
+    }, [isPlaying, sessionActive, finalMovie?.pricePerMinute]);
+
+    // Close session when component unmounts (must be called before any returns)
+    useEffect(() => {
+        return () => {
+            if (sessionActive) {
+                yellowClient.current.closeSession()
+                    .catch(err => console.error('[Yellow] Error closing session:', err));
+            }
+        };
+    }, [sessionActive]);
+
+    // NOW we can do conditional returns after all hooks are called
+    // Show loading while checking for IPFS video
+    if (isLoadingIPFS) {
+        return (
+            <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+                <div className="text-white text-xl">Loading video...</div>
+            </div>
+        );
+    }
+
+    if (!finalMovie) {
+        notFound();
+    }
 
     // Add log entry
     const addLog = (type: LogEntry['type'], message: string, data?: any) => {
@@ -129,57 +237,6 @@ export default function WatchPage({ params }: { params: Promise<{ slug: string }
     };
 
     // Send payment every second while playing
-    useEffect(() => {
-        if (!isPlaying || !sessionActive) {
-            if (paymentIntervalRef.current) {
-                clearInterval(paymentIntervalRef.current);
-                paymentIntervalRef.current = null;
-            }
-            return;
-        }
-
-        // Payment rate: $0.0001 per second
-        const ratePerSecond = movie.pricePerMinute / 60;
-
-        addLog('info', 'Starting micropayments...', {
-            rate: `$${ratePerSecond.toFixed(6)}/second`
-        });
-
-        paymentIntervalRef.current = setInterval(async () => {
-            try {
-                const result = await yellowClient.current.sendPayment(
-                    ratePerSecond.toString(),
-                    STREAMER_ADDRESS
-                );
-
-                setTotalPaid(prev => prev + ratePerSecond);
-                setSessionBalance(prev => Math.max(0, prev - ratePerSecond));
-
-                addLog('success', `Payment sent: $${ratePerSecond.toFixed(6)}`, result);
-
-            } catch (error: any) {
-                addLog('error', 'Payment failed', error.message);
-            }
-        }, 1000); // Every 1 second
-
-        return () => {
-            if (paymentIntervalRef.current) {
-                clearInterval(paymentIntervalRef.current);
-            }
-        };
-    }, [isPlaying, sessionActive, movie.pricePerMinute]);
-
-    // Close session when component unmounts
-    useEffect(() => {
-        return () => {
-            if (sessionActive) {
-                yellowClient.current.closeSession();
-                addLog('info', 'Session closed on unmount');
-            }
-            yellowClient.current.disconnect();
-        };
-    }, [sessionActive]);
-
     // Video event handlers
     const handlePlay = () => {
         if (!sessionActive) {
@@ -198,8 +255,8 @@ export default function WatchPage({ params }: { params: Promise<{ slug: string }
     };
 
     // Get related movies
-    const relatedMovies = getMoviesByCategory(movie.category)
-        .filter(m => m.id !== movie.id)
+    const relatedMovies = getMoviesByCategory(finalMovie.category)
+        .filter(m => m.id !== finalMovie.id)
         .slice(0, 4);
 
     return (
@@ -250,10 +307,10 @@ export default function WatchPage({ params }: { params: Promise<{ slug: string }
                         {/* Video Player */}
                         <div className="relative">
                             <VideoPlayer
-                                videoUrl={movie.videoUrl}
-                                videoType={movie.videoType}
-                                movieTitle={movie.title}
-                                poster={movie.thumbnail}
+                                videoUrl={finalMovie.videoUrl}
+                                videoType={finalMovie.videoType}
+                                movieTitle={finalMovie.title}
+                                poster={finalMovie.thumbnail}
                                 onPlay={handlePlay}
                                 onPause={handlePause}
                                 onTimeUpdate={handleTimeUpdate}
@@ -275,24 +332,24 @@ export default function WatchPage({ params }: { params: Promise<{ slug: string }
 
                         {/* Movie Info */}
                         <div className="bg-zinc-900/50 border border-white/5 rounded-xl p-6">
-                            <h1 className="text-3xl font-bold text-white mb-4">{movie.title}</h1>
+                            <h1 className="text-3xl font-bold text-white mb-4">{finalMovie.title}</h1>
 
                             <div className="flex items-center gap-4 mb-4 text-sm text-zinc-400">
                                 <div className="flex items-center gap-1">
                                     <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                                    <span className="text-white font-medium">{movie.rating || 4.5}</span>
+                                    <span className="text-white font-medium">{finalMovie.rating || 4.5}</span>
                                 </div>
                                 <div className="flex items-center gap-1">
                                     <Eye className="w-4 h-4" />
-                                    <span>{movie.views?.toLocaleString() || '1.2K'} views</span>
+                                    <span>{finalMovie.views?.toLocaleString() || '1.2K'} views</span>
                                 </div>
                                 <div className="px-2 py-1 bg-indigo-500/20 border border-indigo-500/30 rounded text-indigo-400">
-                                    {movie.category}
+                                    {finalMovie.category}
                                 </div>
                             </div>
 
                             <p className="text-zinc-300 leading-relaxed mb-4">
-                                {movie.description}
+                                {finalMovie.description}
                             </p>
 
                             {/* Creator */}
@@ -353,7 +410,7 @@ export default function WatchPage({ params }: { params: Promise<{ slug: string }
                                 <div>
                                     <div className="text-xs text-zinc-500 mb-1">Rate</div>
                                     <div className="text-sm text-zinc-300 font-mono">
-                                        ${(movie.pricePerMinute / 60).toFixed(6)}/sec
+                                        ${(finalMovie.pricePerMinute / 60).toFixed(6)}/sec
                                     </div>
                                 </div>
                             </div>
@@ -403,7 +460,7 @@ export default function WatchPage({ params }: { params: Promise<{ slug: string }
                 {/* Related Movies */}
                 {relatedMovies.length > 0 && (
                     <div className="mt-12">
-                        <h2 className="text-2xl font-bold text-white mb-6">More {movie.category}</h2>
+                        <h2 className="text-2xl font-bold text-white mb-6">More {finalMovie.category}</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             {relatedMovies.map((relatedMovie) => (
                                 <MovieCard key={relatedMovie.id} movie={relatedMovie} />

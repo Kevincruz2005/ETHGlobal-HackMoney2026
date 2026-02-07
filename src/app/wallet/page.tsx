@@ -6,10 +6,14 @@ import { Wallet, Zap, TrendingUp, ArrowUpRight, Activity, Shield } from "lucide-
 import { useAccount } from "wagmi";
 import WalletProfile from "@/components/WalletProfile";
 import ArcDeposit from "@/components/ArcDeposit";
+import { useUSDCBalance } from "@/hooks/useUSDCBalance";
 
 export default function WalletPage() {
     // Real wallet connection
     const { address, isConnected } = useAccount();
+
+    // Real USDC balance from blockchain
+    const { balance: realUSDCBalance, isLoading: isLoadingBalance } = useUSDCBalance();
 
     // Balances (persistent in localStorage for demo)
     const [externalBalance, setExternalBalance] = useState(0);
@@ -17,16 +21,18 @@ export default function WalletPage() {
     const [isDepositOpen, setIsDepositOpen] = useState(false);
     const [showBalanceAnimation, setShowBalanceAnimation] = useState(false);
 
-    // Load balances from localStorage on mount
+    // Load balances from localStorage on mount OR use real USDC balance
     useEffect(() => {
         if (address) {
-            const storedExternal = localStorage.getItem(`balance_external_${address}`);
             const storedArc = localStorage.getItem(`balance_arc_${address}`);
 
-            setExternalBalance(storedExternal ? parseFloat(storedExternal) : 154.20);
+            // Use REAL USDC balance from blockchain
+            setExternalBalance(realUSDCBalance);
             setArcBalance(storedArc ? parseFloat(storedArc) : 0);
+
+            console.log('💰 Real USDC Balance:', realUSDCBalance);
         }
-    }, [address]);
+    }, [address, realUSDCBalance]);
 
     // Save balances to localStorage
     useEffect(() => {
